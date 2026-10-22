@@ -63,14 +63,24 @@ Return this shape with all keys present:
   "startHereTaskId": "t1"
 }`;
 
-function getAiConfig(): AiConfig | null {
-  const apiKey = process.env.LLM_API_KEY?.trim();
+type AiProviderPrefix = "LLM" | "LLM_FALLBACK";
+
+function getAiConfig(prefix: AiProviderPrefix): AiConfig | null {
+  const apiKey = process.env[`${prefix}_API_KEY`]?.trim();
   if (!apiKey) return null;
-  const baseUrl = (process.env.LLM_BASE_URL?.trim() || "https://api.openai.com/v1").replace(
+
+  const isPrimary = prefix === "LLM";
+  const rawBaseUrl = process.env[`${prefix}_BASE_URL`]?.trim();
+  const baseUrl = (rawBaseUrl || (isPrimary ? "https://api.openai.com/v1" : "")).replace(
     /\/+$/,
     "",
   );
-  let providerName = process.env.LLM_PROVIDER_NAME?.trim();
+  if (!baseUrl) return null;
+
+  const model = process.env[`${prefix}_MODEL`]?.trim() || (isPrimary ? "gpt-4o-mini" : "");
+  if (!model) return null;
+
+  let providerName = process.env[`${prefix}_PROVIDER_NAME`]?.trim();
   if (!providerName) {
     try {
       providerName = new URL(baseUrl).hostname;
@@ -78,24 +88,30 @@ function getAiConfig(): AiConfig | null {
       providerName = "your AI provider";
     }
   }
-  return {
-    apiKey,
-    baseUrl,
-    model: process.env.LLM_MODEL?.trim() || "gpt-4o-mini",
-    providerName,
-  };
+
+  return { apiKey, baseUrl, model, providerName };
+}
+
+function getAiConfigs(): AiConfig[] {
+  return [getAiConfig("LLM"), getAiConfig("LLM_FALLBACK")].filter(
+    (config): config is AiConfig => config !== null,
+  );
 }
 
 export function isAiConfigured(): boolean {
-  return getAiConfig() !== null;
+  return getAiConfigs().length > 0;
 }
 
 export function aiProviderName(): string | null {
-  return getAiConfig()?.providerName ?? null;
+  const [primary, fallback] = getAiConfigs();
+  if (!primary) return null;
+  return fallback
+    ? `${primary.providerName} (fallback: ${fallback.providerName})`
+    : primary.providerName;
 }
 
 export function aiModelName(): string | null {
-  return getAiConfig()?.model ?? null;
+  return getAiConfigs()[0]?.model ?? null;
 }
 
 function buildUserPrompt(input: PlanningInput): string {
@@ -151,14 +167,10 @@ function extractJson(raw: string): unknown {
   throw new AiGenerationError("invalid", "The model response was not JSON.");
 }
 
-export async function generateWithAi(
+async function generateWithProvider(
   input: PlanningInput,
+  config: AiConfig,
 ): Promise<{ content: DraftContent; model: string }> {
-  const config = getAiConfig();
-  if (!config) {
-    throw new AiGenerationError("provider", "No AI provider is configured.");
-  }
-
   let response: Response;
   try {
     response = await fetch(`${config.baseUrl}/chat/completions`, {
@@ -237,4 +249,27 @@ export async function generateWithAi(
     }
     throw error;
   }
+}
+
+export async function generateWithAi(
+  input: PlanningInput,
+): Promise<{ content: DraftContent; model: string }> {
+  const configs = getAiConfigs();
+  if (configs.length === 0) {
+    throw new AiGenerationError("provider", "No AI provider is configured.");
+  }
+
+  let lastError: AiGenerationError | null = null;
+  for (const config of configs) {
+    try {
+      return await generateWithProvider(input, config);
+    } catch (error) {
+      lastError =
+        error instanceof AiGenerationError
+          ? error
+          : new AiGenerationError("provider", "The AI provider failed.");
+    }
+  }
+
+  throw lastError ?? new AiGenerationError("provider", "The AI provider failed.");
 }

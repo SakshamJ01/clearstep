@@ -12,7 +12,11 @@ import type {
   TaskCreateInput,
   TaskStatus,
 } from "@/lib/schemas";
-import { taskCreateSchema, taskPatchSchema } from "@/lib/schemas";
+import {
+  taskCreateSchema,
+  taskOrderSchema,
+  taskPatchSchema,
+} from "@/lib/schemas";
 import {
   decryptText,
   encryptText,
@@ -538,6 +542,63 @@ export function addTaskForUser(
 
   const sortOrder = transaction();
   return { taskId, sortOrder };
+}
+
+export function reorderTasksForUser(
+  planId: string,
+  userId: string,
+  input: unknown,
+): { reordered: number } | null {
+  const parsed = taskOrderSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new ApiError(
+      400,
+      "VALIDATION",
+      parsed.error.issues[0]?.message || "Check the task order.",
+    );
+  }
+
+  const db = getDb();
+  const plan = db
+    .prepare("SELECT id, status FROM plans WHERE id = ? AND user_id = ?")
+    .get(planId, userId) as { id: string; status: PlanStatus } | undefined;
+  if (!plan) return null;
+  if (plan.status === "archived") {
+    throw new ApiError(
+      409,
+      "PLAN_ARCHIVED",
+      "Restore this plan before reordering tasks.",
+    );
+  }
+
+  const existing = db
+    .prepare("SELECT id FROM tasks WHERE plan_id = ?")
+    .all(planId) as Array<{ id: string }>;
+  const existingIds = new Set(existing.map((task) => task.id));
+  if (parsed.data.taskIds.some((taskId) => !existingIds.has(taskId))) {
+    throw new ApiError(
+      400,
+      "INVALID_TASK_ORDER",
+      "The task order included a task that is not in this plan.",
+    );
+  }
+
+  const timestamp = nowIso();
+  const transaction = db.transaction(() => {
+    const update = db.prepare(
+      "UPDATE tasks SET sort_order = ?, updated_at = ? WHERE id = ? AND plan_id = ?",
+    );
+    parsed.data.taskIds.forEach((taskId, index) => {
+      update.run((index + 1) * 10, timestamp, taskId, planId);
+    });
+    db.prepare("UPDATE plans SET updated_at = ? WHERE id = ?").run(
+      timestamp,
+      planId,
+    );
+  });
+  transaction();
+
+  return { reordered: parsed.data.taskIds.length };
 }
 
 export function updateTaskForUser(

@@ -48,6 +48,12 @@ Without `APP_SECRET`, the app creates a persistent secret in `data/.app-secret`.
 | `LLM_BASE_URL` | No | OpenAI-compatible base URL. Defaults to `https://api.openai.com/v1`. |
 | `LLM_MODEL` | No | Provider model name. Defaults to `gpt-4o-mini`. |
 | `LLM_PROVIDER_NAME` | No | Provider name shown in consent copy. Defaults to `OpenAI`. |
+| `LLM_FALLBACK_API_KEY` | No | Enables a second provider when the primary provider fails. |
+| `LLM_FALLBACK_BASE_URL` | No | OpenAI-compatible base URL for the fallback provider. |
+| `LLM_FALLBACK_MODEL` | No | Fallback model name. |
+| `LLM_FALLBACK_PROVIDER_NAME` | No | Fallback name shown in consent copy. |
+
+AI attempts the primary provider first, then the fallback provider if the first call fails, times out, or returns an unusable draft. If both fail, Clearstep builds a manual draft.
 
 Set a stable `APP_SECRET` in any real deployment. Changing it makes existing encrypted dumps unreadable.
 
@@ -67,7 +73,7 @@ npm run test:watch # Vitest in watch mode
 
 - Brain dumps are encrypted with AES-256-GCM before storage. Auth cookies contain a random token; only its hash is stored.
 - AI consent is requested per draft and is not persisted. Without consent, the dump never leaves the app.
-- With consent, only the dump and planning fields are sent to the configured provider. Plan history, email, and account data are not included.
+- With consent, only the dump and planning fields are sent to the configured provider. If that provider fails, the same fields are sent to the configured fallback provider. Plan history, email, and account data are not included.
 - AI output is treated as untrusted. It is validated, capped at 20 tasks, stripped of invalid dependencies, and checked for cycles before review.
 - Unapproved drafts are removed after 7 days. Raw dumps attached to saved plans are cleared after 30 days.
 - AI use is limited to 10 drafts per hour and 30 per day per user, with additional per-IP limits. Manual planning is unlimited.

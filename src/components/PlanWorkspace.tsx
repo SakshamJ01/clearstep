@@ -332,26 +332,36 @@ export function PlanWorkspace({
     const target = index + direction;
     if (index < 0 || target < 0 || target >= openTasks.length) return;
     const moving = openTasks[index];
-    const neighbor = openTasks[target];
-    if (!moving || !neighbor) return;
+    if (!moving) return;
+    const nextOpen = [...openTasks];
+    nextOpen.splice(index, 1);
+    nextOpen.splice(target, 0, moving);
+    const nextOrders = new Map(
+      nextOpen.map((task, position) => [task.id, (position + 1) * 10]),
+    );
     const previous = tasks;
     setError(null);
     setBusyTaskId(taskId);
     setTasks((current) =>
       current.map((task) => {
-        if (task.id === moving.id) return { ...task, sortOrder: neighbor.sortOrder };
-        if (task.id === neighbor.id) return { ...task, sortOrder: moving.sortOrder };
-        return task;
+        const order = nextOrders.get(task.id);
+        return order === undefined ? task : { ...task, sortOrder: order };
       }),
     );
     try {
-      const [first, second] = await Promise.all([
-        requestTaskPatch(moving.id, { sortOrder: neighbor.sortOrder }),
-        requestTaskPatch(neighbor.id, { sortOrder: moving.sortOrder }),
-      ]);
-      if (!first.ok || !second.ok) {
+      const response = await fetch(`/api/plans/${plan.id}/tasks`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: nextOpen.map((task) => task.id) }),
+      });
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+      const data = (await response.json().catch(() => ({}))) as ApiFailure;
+      if (!response.ok) {
         setTasks(previous);
-        setError(first.message || second.message || "The tasks could not be reordered.");
+        setError(apiMessage(data, "The tasks could not be reordered."));
       }
     } catch {
       setTasks(previous);

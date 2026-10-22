@@ -171,6 +171,24 @@ export const taskCreateSchema = z
 
 export type TaskCreateInput = z.infer<typeof taskCreateSchema>;
 
+export const taskOrderSchema = z
+  .object({
+    taskIds: z
+      .array(z.string().regex(idPattern, "Choose valid tasks."))
+      .min(1)
+      .max(TASK_MAX),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (new Set(value.taskIds).size !== value.taskIds.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["taskIds"],
+        message: "Each task can appear only once in the order.",
+      });
+    }
+  });
+
 export const taskPatchSchema = z
   .object({
     title: z.string().trim().min(3).max(120).optional(),
