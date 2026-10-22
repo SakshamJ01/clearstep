@@ -14,6 +14,7 @@ export default async function SettingsPage() {
 
   return (
     <SettingsPanel
+      userId={user.id}
       email={user.email}
       createdAt={user.createdAt}
       initialPreference={user.aiPreference}

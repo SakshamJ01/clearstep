@@ -50,7 +50,7 @@ export function AppNav({ user }: { user: SessionUser }) {
           >
             {user.email.slice(0, 1).toUpperCase()}
           </Link>
-          <LogoutButton compact />
+          <LogoutButton compact userId={user.id} />
         </div>
       </div>
     </header>

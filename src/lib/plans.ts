@@ -313,14 +313,32 @@ export function createApprovedPlan(
   content: DraftContent,
 ): string {
   const db = getDb();
-  if (draft.approvedPlanId) {
-    const existing = db
-      .prepare("SELECT id FROM plans WHERE id = ? AND user_id = ?")
-      .get(draft.approvedPlanId, draft.userId) as { id: string } | undefined;
-    if (existing) return existing.id;
-  }
 
   const transaction = db.transaction(() => {
+    const current = db
+      .prepare(
+        "SELECT approved_plan_id FROM plan_drafts WHERE id = ? AND user_id = ?",
+      )
+      .get(draft.id, draft.userId) as
+      | { approved_plan_id: string | null }
+      | undefined;
+    if (!current) {
+      throw new ApiError(404, "NOT_FOUND", "That draft could not be found.");
+    }
+
+    if (current.approved_plan_id) {
+      const existing = db
+        .prepare("SELECT id FROM plans WHERE id = ? AND user_id = ?")
+        .get(current.approved_plan_id, draft.userId) as
+        | { id: string }
+        | undefined;
+      if (existing) return existing.id;
+      db.prepare(
+        `UPDATE plan_drafts SET approved_plan_id = NULL
+         WHERE id = ? AND user_id = ?`,
+      ).run(draft.id, draft.userId);
+    }
+
     const timestamp = nowIso();
     const planId = randomId();
     const idMap = new Map<string, string>();
@@ -411,16 +429,25 @@ export function createApprovedPlan(
       timestamp,
     );
 
-    db.prepare(
-      `UPDATE plan_drafts
-       SET approved_plan_id = ?, updated_at = ?
-       WHERE id = ? AND user_id = ?`,
-    ).run(planId, timestamp, draft.id, draft.userId);
+    const updated = db
+      .prepare(
+        `UPDATE plan_drafts
+         SET approved_plan_id = ?, updated_at = ?
+         WHERE id = ? AND user_id = ? AND approved_plan_id IS NULL`,
+      )
+      .run(planId, timestamp, draft.id, draft.userId);
+    if (updated.changes !== 1) {
+      throw new ApiError(
+        409,
+        "APPROVAL_CONFLICT",
+        "This draft was approved elsewhere. Reload it to see the saved plan.",
+      );
+    }
 
     return planId;
   });
 
-  return transaction();
+  return transaction.immediate();
 }
 
 function recalculatePlanStatus(planId: string, db: Database.Database): void {

@@ -674,14 +674,6 @@ export function PlanWorkspace({
                 className={`btn btn-sm ${
                   nextTask.status === "in_progress" ? "btn-acid" : "btn-outline"
                 }`}
-                style={
-                  nextTask.status === "in_progress"
-                    ? undefined
-                    : {
-                        borderColor: "rgba(251,248,240,0.28)",
-                        color: "var(--paper-bright)",
-                      }
-                }
                 onClick={() => markDone(nextTask)}
                 disabled={readOnly || Boolean(busyTaskId)}
               >
@@ -690,8 +682,7 @@ export function PlanWorkspace({
               </button>
               <a
                 href={`#task-${nextTask.id}`}
-                className="btn btn-ghost btn-sm"
-                style={{ color: "rgba(251,248,240,0.72)" }}
+                className="btn btn-ghost btn-sm next-action-details"
               >
                 Notes & details
               </a>
@@ -1003,7 +994,7 @@ export function PlanWorkspace({
               If these steps are taken, the outcome is more likely:{" "}
               <strong>{plan.desiredOutcome}</strong>
             </p>
-            <div className="plan-side-meta">
+            <dl className="plan-side-meta">
               <div>
                 <dt>Deadline</dt>
                 <dd>{formatDeadlineRelative(plan.horizonDate)}</dd>
@@ -1016,7 +1007,7 @@ export function PlanWorkspace({
                 <dt>Made with</dt>
                 <dd>{generationModeLabel(plan.generationMode)}</dd>
               </div>
-            </div>
+            </dl>
           </div>
 
           {plan.assumptions.length > 0 ? (

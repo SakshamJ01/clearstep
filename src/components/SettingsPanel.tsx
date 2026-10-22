@@ -13,11 +13,13 @@ import {
   TrashIcon,
   WarningIcon,
 } from "@/components/Icons";
+import { clearComposerDraft } from "@/lib/composer-draft";
 import { formatDateTime, pluralize } from "@/lib/format";
 import type { AiPreference } from "@/lib/schemas";
 import type { UsageSummary } from "@/lib/rate-limit";
 
 interface SettingsPanelProps {
+  userId: string;
   email: string;
   createdAt: string;
   initialPreference: AiPreference;
@@ -42,6 +44,7 @@ function apiMessage(data: ApiFailure, fallback: string): string {
 }
 
 export function SettingsPanel({
+  userId,
   email,
   createdAt,
   initialPreference,
@@ -171,6 +174,7 @@ export function SettingsPanel({
         setDeleteError(apiMessage(data, "The account could not be deleted."));
         return;
       }
+      clearComposerDraft(userId);
       router.push("/");
       router.refresh();
     } catch {
@@ -436,7 +440,7 @@ export function SettingsPanel({
                 <span>Account since {formatDateTime(createdAt)}</span>
               </div>
             </div>
-            <div className="plan-side-meta" style={{ marginTop: 16 }}>
+            <dl className="plan-side-meta" style={{ marginTop: 16 }}>
               <div>
                 <dt>AI preference</dt>
                 <dd>{preference === "ask" ? "Ask each time" : "Manual only"}</dd>
@@ -449,7 +453,7 @@ export function SettingsPanel({
                 <dt>Retained dumps</dt>
                 <dd>{retainedDumpCount}</dd>
               </div>
-            </div>
+            </dl>
           </div>
 
           <div className="card settings-card">

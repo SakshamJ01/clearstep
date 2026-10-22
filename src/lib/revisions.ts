@@ -184,7 +184,7 @@ export function createReplanRevision(options: {
       timestamp,
     );
   });
-  transaction();
+  transaction.immediate();
 
   const revision = getRevision(plan.id, revisionId, options.userId);
   if (!revision) {
@@ -229,71 +229,75 @@ export function acceptRevision(
   userId: string,
 ): { planId: string } | null {
   const db = getDb();
-  const revisionRow = db
-    .prepare(
-      `SELECT r.*, p.status AS plan_status
-       FROM plan_revisions r
-       JOIN plans p ON p.id = r.plan_id
-       WHERE r.id = ? AND r.plan_id = ? AND p.user_id = ?`,
-    )
-    .get(revisionId, planId, userId) as
-    | (RevisionRow & { plan_status: PlanStatus })
-    | undefined;
-  if (!revisionRow) return null;
-  if (revisionRow.status !== "pending") {
-    throw new ApiError(
-      409,
-      "REVISION_NOT_PENDING",
-      "This revision is no longer waiting for a decision.",
-    );
-  }
-  if (revisionRow.plan_status === "archived") {
-    throw new ApiError(
-      409,
-      "PLAN_ARCHIVED",
-      "Restore this plan before applying a re-plan.",
-    );
-  }
-
-  const parsedPayload = replanPayloadSchema.safeParse(
-    JSON.parse(revisionRow.payload_json) as unknown,
-  );
-  if (!parsedPayload.success) {
-    throw new ApiError(
-      409,
-      "REVISION_INVALID",
-      "This re-plan can no longer be applied. Generate a new preview.",
-    );
-  }
-  const payload = parsedPayload.data;
-
-  const taskRows = db
-    .prepare("SELECT id, status FROM tasks WHERE plan_id = ?")
-    .all(planId) as Array<{ id: string; status: TaskStatus }>;
-  const taskById = new Map(taskRows.map((task) => [task.id, task]));
-
-  const openOrder: string[] = [];
-  const seen = new Set<string>();
-  for (const taskId of payload.taskOrder) {
-    const task = taskById.get(taskId);
-    if (!task || task.status === "done" || seen.has(taskId)) continue;
-    seen.add(taskId);
-    openOrder.push(taskId);
-  }
-  for (const task of taskRows) {
-    if (task.status !== "done" && !seen.has(task.id)) {
-      seen.add(task.id);
-      openOrder.push(task.id);
-    }
-  }
-
-  let startTaskId =
-    payload.startTaskId && seen.has(payload.startTaskId)
-      ? payload.startTaskId
-      : null;
-  if (!startTaskId) startTaskId = openOrder[0] ?? null;
 
   const transaction = db.transaction(() => {
+    const revisionRow = db
+      .prepare(
+        `SELECT r.*, p.status AS plan_status
+         FROM plan_revisions r
+         JOIN plans p ON p.id = r.plan_id
+         WHERE r.id = ? AND r.plan_id = ? AND p.user_id = ?`,
+      )
+      .get(revisionId, planId, userId) as
+      | (RevisionRow & { plan_status: PlanStatus })
+      | undefined;
+    if (!revisionRow) return null;
+    if (revisionRow.status === "accepted") {
+      return { planId };
+    }
+    if (revisionRow.plan_status === "archived") {
+      throw new ApiError(
+        409,
+        "PLAN_ARCHIVED",
+        "Restore this plan before applying a re-plan.",
+      );
+    }
+    if (revisionRow.status !== "pending") {
+      throw new ApiError(
+        409,
+        "REVISION_NOT_PENDING",
+        "This revision is no longer waiting for a decision.",
+      );
+    }
+
+    const parsedPayload = replanPayloadSchema.safeParse(
+      JSON.parse(revisionRow.payload_json) as unknown,
+    );
+    if (!parsedPayload.success) {
+      throw new ApiError(
+        409,
+        "REVISION_INVALID",
+        "This re-plan can no longer be applied. Generate a new preview.",
+      );
+    }
+    const payload = parsedPayload.data;
+
+    const taskRows = db
+      .prepare("SELECT id, status FROM tasks WHERE plan_id = ?")
+      .all(planId) as Array<{ id: string; status: TaskStatus }>;
+    const taskById = new Map(taskRows.map((task) => [task.id, task]));
+
+    const openOrder: string[] = [];
+    const seen = new Set<string>();
+    for (const taskId of payload.taskOrder) {
+      const task = taskById.get(taskId);
+      if (!task || task.status === "done" || seen.has(taskId)) continue;
+      seen.add(taskId);
+      openOrder.push(taskId);
+    }
+    for (const task of taskRows) {
+      if (task.status !== "done" && !seen.has(task.id)) {
+        seen.add(task.id);
+        openOrder.push(task.id);
+      }
+    }
+
+    let startTaskId =
+      payload.startTaskId && seen.has(payload.startTaskId)
+        ? payload.startTaskId
+        : null;
+    if (!startTaskId) startTaskId = openOrder[0] ?? null;
+
     const updateOrder = db.prepare(
       "UPDATE tasks SET sort_order = ?, updated_at = ? WHERE id = ?",
     );
@@ -320,13 +324,23 @@ export function acceptRevision(
        WHERE plan_id = ? AND status = 'pending' AND id <> ?`,
     ).run(planId, revisionId);
 
-    db.prepare(
-      `UPDATE plan_revisions
-       SET status = 'accepted', accepted_at = ?
-       WHERE id = ? AND plan_id = ?`,
-    ).run(nowIso(), revisionId, planId);
-  });
-  transaction();
+    const accepted = db
+      .prepare(
+        `UPDATE plan_revisions
+         SET status = 'accepted', accepted_at = ?
+         WHERE id = ? AND plan_id = ? AND status = 'pending'`,
+      )
+      .run(nowIso(), revisionId, planId);
+    if (accepted.changes !== 1) {
+      throw new ApiError(
+        409,
+        "REVISION_CONFLICT",
+        "This re-plan changed elsewhere. Reload the plan to see its current state.",
+      );
+    }
 
-  return { planId };
+    return { planId };
+  });
+
+  return transaction.immediate();
 }

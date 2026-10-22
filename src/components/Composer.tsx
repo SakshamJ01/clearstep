@@ -17,6 +17,7 @@ import {
   SparkIcon,
   WarningIcon,
 } from "@/components/Icons";
+import { clearComposerDraft, composerDraftKey } from "@/lib/composer-draft";
 import type { AiPreference } from "@/lib/schemas";
 
 interface UsageSummary {
@@ -94,9 +95,10 @@ export function Composer({
   const constraintsId = useId();
   const consentId = useId();
   const errorId = useId();
-  const storageKey = `clearstep:composer:v1:${userId}`;
+  const storageKey = composerDraftKey(userId);
 
   const dumpRef = useRef<HTMLTextAreaElement>(null);
+  const skipNextAutosaveRef = useRef(false);
   const [hydrated, setHydrated] = useState(false);
   const [dump, setDump] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -106,7 +108,7 @@ export function Composer({
   const [aiConsent, setAiConsent] = useState(false);
   const [requestId, setRequestId] = useState("");
   const [saveState, setSaveState] = useState<
-    "saved" | "saving" | "error"
+    "saved" | "saving" | "cleared" | "error"
   >("saved");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +161,10 @@ export function Composer({
 
   useEffect(() => {
     if (!hydrated) return;
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
     const timer = window.setTimeout(() => {
       try {
         const snapshot: SavedComposer = {
@@ -206,6 +212,31 @@ export function Composer({
       setSaveState("error");
       return false;
     }
+  }
+
+  function clearLocalDraft() {
+    if (pending) return;
+    if (
+      !window.confirm(
+        "Clear this draft from this device? The text in this form will also be cleared.",
+      )
+    ) {
+      return;
+    }
+    skipNextAutosaveRef.current = true;
+    clearComposerDraft(userId);
+    setDump("");
+    setOutcome("");
+    setHorizonDate("");
+    setAvailableMinutes("");
+    setConstraints("");
+    setAiConsent(false);
+    setRequestId(newRequestId());
+    setFieldErrors({});
+    setError(null);
+    setSafety(null);
+    setSaveState("cleared");
+    dumpRef.current?.focus();
   }
 
   function fillSample() {
@@ -364,16 +395,28 @@ export function Composer({
               <h2>The dump</h2>
               <p>One messy paragraph is fine. Bullets work too.</p>
             </div>
-            <div
-              className="save-status"
-              data-state={saveState}
-              aria-live="polite"
-            >
-              {saveState === "saved"
-                ? "Saved on this device"
-                : saveState === "saving"
-                  ? "Saving…"
-                  : "Local save failed"}
+            <div className="row" style={{ gap: 12, alignItems: "center" }}>
+              <div
+                className="save-status"
+                data-state={saveState}
+                aria-live="polite"
+              >
+                {saveState === "saved"
+                  ? "Saved on this device"
+                  : saveState === "saving"
+                    ? "Saving…"
+                    : saveState === "cleared"
+                      ? "Local draft cleared"
+                      : "Local save failed"}
+              </div>
+              <button
+                type="button"
+                className="example-link"
+                onClick={clearLocalDraft}
+                disabled={!hydrated || pending}
+              >
+                Clear from device
+              </button>
             </div>
           </div>
 
@@ -433,7 +476,8 @@ export function Composer({
             ) : null}
             <p className="field-hint" id={`${dumpId}-hint`}>
               Autosaved in this browser as you type. Nothing leaves this device
-              until you press the button below.
+              until you press the button below. Use “Clear from device” to
+              remove it.
             </p>
           </div>
 
@@ -702,8 +746,8 @@ export function Composer({
               </li>
             </ul>
             <p className="side-aside-note">
-              This composer autosaves to your browser. On a shared device, clear
-              the text or sign out when you are done.
+              This composer autosaves to your browser. On a shared device, use
+              “Clear from device” or sign out when you are done.
             </p>
           </div>
 

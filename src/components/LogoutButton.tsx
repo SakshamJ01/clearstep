@@ -3,8 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogOutIcon } from "@/components/Icons";
+import { clearComposerDraft } from "@/lib/composer-draft";
 
-export function LogoutButton({ compact = false }: { compact?: boolean }) {
+export function LogoutButton({
+  compact = false,
+  userId,
+}: {
+  compact?: boolean;
+  userId: string;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
@@ -13,6 +20,7 @@ export function LogoutButton({ compact = false }: { compact?: boolean }) {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
+      clearComposerDraft(userId);
       router.push("/");
       router.refresh();
     }

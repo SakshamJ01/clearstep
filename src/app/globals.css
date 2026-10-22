@@ -5,7 +5,7 @@
   --paper-deep: #e8e0ce;
   --ink: #1c2a22;
   --ink-soft: #526057;
-  --ink-faint: #6c786f;
+  --ink-faint: #58645b;
   --forest: #194b36;
   --forest-deep: #103326;
   --acid: #d9ec7d;
@@ -1598,7 +1598,7 @@ svg {
   display: flex;
   flex-wrap: wrap;
   gap: 18px;
-  color: rgba(251, 248, 240, 0.45);
+  color: rgba(251, 248, 240, 0.72);
   font-size: 11px;
 }
 
@@ -2560,6 +2560,27 @@ svg {
   gap: 9px;
   margin-top: auto;
   padding-top: 24px;
+}
+
+.next-action-footer .btn-outline {
+  border-color: rgba(251, 248, 240, 0.32);
+  background: transparent;
+  color: var(--paper-bright);
+}
+
+.next-action-footer .btn-outline:hover:not(:disabled) {
+  border-color: rgba(251, 248, 240, 0.5);
+  background: rgba(251, 248, 240, 0.12);
+  color: var(--paper-bright);
+}
+
+.next-action-details {
+  color: rgba(251, 248, 240, 0.72);
+}
+
+.next-action-details:hover:not(:disabled) {
+  background: rgba(251, 248, 240, 0.1);
+  color: var(--paper-bright);
 }
 
 .next-complete h2 {
