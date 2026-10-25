@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState, type FormEvent } from "react";
-import { ArrowRightIcon, WarningIcon } from "@/components/Icons";
+import { useId, useState, useSyncExternalStore, type FormEvent } from "react";
+import { ArrowRightIcon, SparkIcon, WarningIcon } from "@/components/Icons";
+import {
+  clearGuestPlan,
+  GUEST_PLAN_STORAGE_KEY,
+  loadGuestPlan,
+} from "@/lib/guest-storage";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -15,6 +20,18 @@ interface ApiFailure {
     message?: string;
     fields?: Record<string, string>;
   };
+}
+
+function subscribeStorage(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function checkHasGuestPlanSnapshot(): boolean {
+  if (typeof window === "undefined") return false;
+  const raw = window.localStorage.getItem(GUEST_PLAN_STORAGE_KEY);
+  return Boolean(raw && raw.length > 20);
 }
 
 export function AuthForm({ mode }: AuthFormProps) {
@@ -29,6 +46,12 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const isSignup = mode === "signup";
+
+  const hasGuestPlan = useSyncExternalStore(
+    subscribeStorage,
+    checkHasGuestPlanSnapshot,
+    () => false,
+  );
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,6 +79,32 @@ export function AuthForm({ mode }: AuthFormProps) {
         setFieldErrors(data.error?.fields ?? {});
         return;
       }
+
+      // If a guest plan exists in localStorage, claim it now into the user's account
+      const guestPlan = loadGuestPlan();
+      if (guestPlan && guestPlan.tasks && guestPlan.tasks.length > 0) {
+        try {
+          const claimRes = await fetch("/api/plans/claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(guestPlan),
+          });
+          if (claimRes.ok) {
+            const claimData = (await claimRes.json().catch(() => ({}))) as {
+              planId?: string;
+            };
+            clearGuestPlan();
+            if (claimData.planId) {
+              router.push(`/plans/${claimData.planId}?claimed=true`);
+              router.refresh();
+              return;
+            }
+          }
+        } catch (claimErr) {
+          console.warn("Could not auto-claim guest plan:", claimErr);
+        }
+      }
+
       router.push("/compose");
       router.refresh();
     } catch {
@@ -76,6 +125,15 @@ export function AuthForm({ mode }: AuthFormProps) {
           ? "Create an account to save plans, edit drafts, and track the one step you chose to start with."
           : "Sign in to open your plans or start a new dump. Nothing has been sent anywhere."}
       </p>
+
+      {hasGuestPlan ? (
+        <div className="callout callout-info" style={{ marginBottom: 16 }}>
+          <SparkIcon />
+          <div>
+            <strong>Guest plan found:</strong> Complete sign in or registration to save your local plan and keep all your completed tasks synced.
+          </div>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="callout callout-danger" role="alert" style={{ marginBottom: 16 }}>

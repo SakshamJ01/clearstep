@@ -3,5 +3,12 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 
 export default defineConfig([
   ...nextVitals,
-  globalIgnores([".next/**", "data/**", "public/sw.js", "next-env.d.ts"]),
+  globalIgnores([
+    ".next/**",
+    "data/**",
+    "public/sw.js",
+    "next-env.d.ts",
+    "playwright-report/**",
+    "test-results/**",
+  ]),
 ]);

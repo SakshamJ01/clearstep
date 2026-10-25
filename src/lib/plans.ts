@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api";
 import { TASK_MAX } from "@/lib/constants";
 import { getDb, nowIso } from "@/lib/db";
 import type { DraftRecord } from "@/lib/drafts";
+import type { GuestPlan } from "@/lib/guest-storage";
 import type {
   DraftContent,
   GenerationMode,
@@ -444,6 +445,113 @@ export function createApprovedPlan(
       );
     }
 
+    return planId;
+  });
+
+  return transaction.immediate();
+}
+
+export function createClaimedPlan(
+  userId: string,
+  guestPlan: GuestPlan,
+): string {
+  const db = getDb();
+
+  const transaction = db.transaction(() => {
+    const timestamp = nowIso();
+    const planId = randomId();
+    const idMap = new Map<string, string>();
+    for (const task of guestPlan.tasks) {
+      idMap.set(task.id, randomId());
+    }
+
+    const firstTaskId = guestPlan.tasks[0]
+      ? idMap.get(guestPlan.tasks[0].id)
+      : null;
+    const startTaskId =
+      (guestPlan.startTaskId && idMap.get(guestPlan.startTaskId)) ||
+      firstTaskId;
+
+    db.prepare(
+      `INSERT INTO plans (
+        id, user_id, title, desired_outcome, horizon_date,
+        available_minutes_per_week, constraints_text, source_dump,
+        status, generation_mode, start_task_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 'manual', ?, ?, ?)`,
+    ).run(
+      planId,
+      userId,
+      guestPlan.title,
+      guestPlan.desiredOutcome || guestPlan.title,
+      guestPlan.horizonDate,
+      guestPlan.availableMinutesPerWeek,
+      encryptText(guestPlan.constraintsText),
+      encryptText(guestPlan.sourceDump),
+      startTaskId,
+      timestamp,
+      timestamp,
+    );
+
+    const insertTask = db.prepare(
+      `INSERT INTO tasks (
+        id, plan_id, title, description, effort_min, effort_max,
+        status, sort_order, rationale, note, created_at, updated_at,
+        completed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+
+    guestPlan.tasks.forEach((task, index) => {
+      const taskId = idMap.get(task.id) || randomId();
+      insertTask.run(
+        taskId,
+        planId,
+        task.title,
+        task.description,
+        task.effortMin,
+        task.effortMax,
+        task.status || "not_started",
+        (index + 1) * 10,
+        task.rationale,
+        task.note ? encryptText(task.note) : null,
+        timestamp,
+        timestamp,
+        task.status === "done" ? (task.completedAt || timestamp) : null,
+      );
+    });
+
+    const insertDependency = db.prepare(
+      `INSERT OR IGNORE INTO task_dependencies (task_id, depends_on_task_id)
+       VALUES (?, ?)`,
+    );
+    for (const task of guestPlan.tasks) {
+      const taskId = idMap.get(task.id);
+      if (!taskId) continue;
+      for (const dependency of task.dependsOn) {
+        const dependencyId = idMap.get(dependency);
+        if (dependencyId && dependencyId !== taskId) {
+          insertDependency.run(taskId, dependencyId);
+        }
+      }
+    }
+
+    db.prepare(
+      `INSERT INTO plan_revisions (
+        id, plan_id, revision_number, status, assumptions_json,
+        changes_json, payload_json, model_version, created_at, accepted_at
+      ) VALUES (?, ?, 1, 'accepted', ?, '[]', ?, NULL, ?, ?)`,
+    ).run(
+      randomId(),
+      planId,
+      JSON.stringify(guestPlan.assumptions || []),
+      JSON.stringify({
+        kind: "claimed_guest_plan",
+        taskCount: guestPlan.tasks.length,
+      }),
+      timestamp,
+      timestamp,
+    );
+
+    recalculatePlanStatus(planId, db);
     return planId;
   });
 

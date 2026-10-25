@@ -36,6 +36,9 @@ export default async function LandingPage() {
               </>
             ) : (
               <>
+                <Link href="/try" className="btn btn-ghost">
+                  Try guest mode
+                </Link>
                 <Link href="/login" className="btn btn-ghost">
                   Sign in
                 </Link>
@@ -70,7 +73,12 @@ export default async function LandingPage() {
                 {user ? "Start a new plan" : "Turn a dump into a plan"}
                 <ArrowRightIcon />
               </Link>
-              <a href="#how" className="btn btn-outline btn-lg">
+              {!user && (
+                <Link href="/try" className="btn btn-outline btn-lg">
+                  <SparkIcon /> Try without signup
+                </Link>
+              )}
+              <a href="#how" className="btn btn-ghost btn-lg">
                 See how it works
               </a>
             </div>
