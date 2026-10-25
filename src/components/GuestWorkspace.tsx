@@ -16,7 +16,9 @@ import {
   SparkIcon,
   TrashIcon,
 } from "@/components/Icons";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { formatEffort, pluralize } from "@/lib/format";
+import { formatSpokenChunk } from "@/lib/use-voice-dictation";
 import {
   clearGuestPlan,
   createGuestPlanFromDraft,
@@ -386,20 +388,27 @@ export function GuestWorkspace() {
 
           <form onSubmit={handleGenerateDraft}>
             <div className="field" style={{ marginBottom: 16 }}>
-              <label className="field-label" htmlFor={dumpId}>
-                The Brain Dump <span style={{ color: "var(--accent)" }}>*</span>
-              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 8 }}>
+                <label className="field-label" htmlFor={dumpId} style={{ marginBottom: 0 }}>
+                  The Brain Dump <span style={{ color: "var(--accent)" }}>*</span>
+                </label>
+                <VoiceInputButton
+                  onTranscriptChunk={(chunk) => {
+                    setDump((prev) => formatSpokenChunk(prev, chunk));
+                  }}
+                />
+              </div>
               <textarea
                 id={dumpId}
                 className="input"
                 rows={7}
-                placeholder="Write or paste whatever is in your head: unfinished chores, messy ideas, things you're anxious about avoiding..."
+                placeholder="Write, speak, or paste whatever is in your head: unfinished chores, messy ideas, things you're anxious about avoiding..."
                 value={dump}
                 onChange={(e) => setDump(e.target.value)}
                 required
               />
               <div className="field-hint" style={{ marginTop: 4 }}>
-                {dump.split(/\s+/).filter(Boolean).length} words · Separate items with line breaks or bullet points.
+                {dump.split(/\s+/).filter(Boolean).length} words · Speak out loud or separate items with line breaks.
               </div>
             </div>
 

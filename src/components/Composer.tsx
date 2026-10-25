@@ -18,6 +18,8 @@ import {
   WarningIcon,
 } from "@/components/Icons";
 import { clearComposerDraft, composerDraftKey } from "@/lib/composer-draft";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
+import { formatSpokenChunk } from "@/lib/use-voice-dictation";
 import type { AiPreference } from "@/lib/schemas";
 
 interface UsageSummary {
@@ -425,7 +427,19 @@ export function Composer({
               <label className="field-label" htmlFor={dumpId}>
                 What&apos;s taking up space?
               </label>
-              <div className="row" style={{ gap: 12 }}>
+              <div className="row" style={{ gap: 12, alignItems: "center" }}>
+                <VoiceInputButton
+                  onTranscriptChunk={(chunk) => {
+                    setDump((prev) => formatSpokenChunk(prev, chunk));
+                    setFieldErrors((current) => {
+                      if (!current.dump) return current;
+                      const next = { ...current };
+                      delete next.dump;
+                      return next;
+                    });
+                  }}
+                  disabled={pending}
+                />
                 {dump.trim().length === 0 ? (
                   <button
                     type="button"
