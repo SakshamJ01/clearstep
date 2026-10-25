@@ -43,6 +43,8 @@ Without `APP_SECRET`, the app creates a persistent secret in `data/.app-secret`.
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `APP_SECRET` | No | Encrypts dumps and signs rate-limit identifiers. Generated and stored locally if omitted. |
+| `APP_PREVIOUS_SECRETS` | No | Comma-separated list of retired secrets to support seamless key rotation without losing existing dumps. |
+| `CRON_SECRET` | No | Authorizes automated background cleanup requests to `/api/cron/cleanup`. Required in production. |
 | `DATABASE_PATH` | No | SQLite file path. Defaults to `./data/clearstep.db`. |
 | `LLM_API_KEY` | No | Enables AI drafts when all required provider settings are present. |
 | `LLM_BASE_URL` | No | OpenAI-compatible base URL. Defaults to `https://api.openai.com/v1`. |
@@ -55,7 +57,7 @@ Without `APP_SECRET`, the app creates a persistent secret in `data/.app-secret`.
 
 AI attempts the primary provider first, then the fallback provider if the first call fails, times out, or returns an unusable draft. If both fail, Clearstep builds a manual draft.
 
-Set a stable `APP_SECRET` in any real deployment. Changing it makes existing encrypted dumps unreadable.
+Set a stable `APP_SECRET` in any real deployment. If you rotate keys, specify prior keys in `APP_PREVIOUS_SECRETS` so existing encrypted dumps remain decryptable.
 
 ## Scripts
 

@@ -119,6 +119,8 @@ export function DraftEditor({
     fallbackReason,
   );
   const [lastSaved, setLastSaved] = useState(JSON.stringify(initialContent));
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const approvingRef = useRef(false);
 
   useEffect(() => {
@@ -178,6 +180,17 @@ export function DraftEditor({
       const target = index + direction;
       if (target < 0 || target >= next.length) return current;
       [next[index], next[target]] = [next[target]!, next[index]!];
+      return { ...current, tasks: next };
+    });
+  }
+
+  function reorderTasks(sourceIndex: number, targetIndex: number) {
+    if (sourceIndex === targetIndex) return;
+    setContent((current) => {
+      const next = [...current.tasks];
+      const [moved] = next.splice(sourceIndex, 1);
+      if (!moved) return current;
+      next.splice(targetIndex, 0, moved);
       return { ...current, tasks: next };
     });
   }
@@ -585,7 +598,42 @@ export function DraftEditor({
                 return (
                   <li
                     key={task.id}
-                    className={`task-edit-card ${isStart ? "is-start" : ""}`}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData("text/plain", String(index));
+                      event.dataTransfer.effectAllowed = "move";
+                      setDraggedIndex(index);
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      if (dragOverIndex !== index) {
+                        setDragOverIndex(index);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverIndex === index) {
+                        setDragOverIndex(null);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const sourceIndex = Number(
+                        event.dataTransfer.getData("text/plain"),
+                      );
+                      if (!Number.isNaN(sourceIndex) && sourceIndex !== index) {
+                        reorderTasks(sourceIndex, index);
+                      }
+                      setDraggedIndex(null);
+                      setDragOverIndex(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedIndex(null);
+                      setDragOverIndex(null);
+                    }}
+                    className={`task-edit-card ${isStart ? "is-start" : ""} ${
+                      draggedIndex === index ? "is-dragging" : ""
+                    } ${dragOverIndex === index ? "drag-over" : ""}`}
                   >
                     <div className="task-edit-head">
                       <div className="task-edit-head-left">

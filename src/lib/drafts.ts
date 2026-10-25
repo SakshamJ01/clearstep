@@ -230,19 +230,37 @@ export function clearExpiredRawDumps(): number {
   return result.changes;
 }
 
-let lastMaintenance = 0;
+export interface MaintenanceStats {
+  expiredDraftsDeleted: number;
+  expiredDumpsCleared: number;
+  expiredSessionsDeleted: number;
+}
 
-export function runMaintenance(): void {
-  if (Date.now() - lastMaintenance < 60 * 60 * 1000) return;
-  lastMaintenance = Date.now();
-  getDb()
+export function executeMaintenance(): MaintenanceStats {
+  const draftsResult = getDb()
     .prepare(
       `DELETE FROM plan_drafts
        WHERE approved_plan_id IS NULL AND created_at < ?`,
     )
     .run(isoDaysAgo(DRAFT_RETENTION_DAYS));
-  clearExpiredRawDumps();
-  getDb()
+
+  const expiredDumpsCleared = clearExpiredRawDumps();
+
+  const sessionsResult = getDb()
     .prepare("DELETE FROM sessions WHERE expires_at <= ?")
     .run(nowIso());
+
+  return {
+    expiredDraftsDeleted: draftsResult.changes,
+    expiredDumpsCleared,
+    expiredSessionsDeleted: sessionsResult.changes,
+  };
+}
+
+let lastMaintenance = 0;
+
+export function runMaintenance(): void {
+  if (Date.now() - lastMaintenance < 60 * 60 * 1000) return;
+  lastMaintenance = Date.now();
+  executeMaintenance();
 }

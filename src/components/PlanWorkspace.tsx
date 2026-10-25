@@ -78,6 +78,8 @@ export function PlanWorkspace({
   const [startTaskId, setStartTaskId] = useState(plan.startTaskId);
   const [archived, setArchived] = useState(plan.status === "archived");
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
   const [planBusy, setPlanBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
@@ -342,6 +344,51 @@ export function PlanWorkspace({
     const previous = tasks;
     setError(null);
     setBusyTaskId(taskId);
+    setTasks((current) =>
+      current.map((task) => {
+        const order = nextOrders.get(task.id);
+        return order === undefined ? task : { ...task, sortOrder: order };
+      }),
+    );
+    try {
+      const response = await fetch(`/api/plans/${plan.id}/tasks`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: nextOpen.map((task) => task.id) }),
+      });
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+      const data = (await response.json().catch(() => ({}))) as ApiFailure;
+      if (!response.ok) {
+        setTasks(previous);
+        setError(apiMessage(data, "The tasks could not be reordered."));
+      }
+    } catch {
+      setTasks(previous);
+      setError("The connection failed. The task order was not changed.");
+    } finally {
+      setBusyTaskId(null);
+    }
+  }
+
+  async function reorderOpenTasks(sourceTaskId: string, targetTaskId: string) {
+    if (readOnly || busyTaskId || sourceTaskId === targetTaskId) return;
+    const sourceIndex = openTasks.findIndex((task) => task.id === sourceTaskId);
+    const targetIndex = openTasks.findIndex((task) => task.id === targetTaskId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const moving = openTasks[sourceIndex];
+    if (!moving) return;
+    const nextOpen = [...openTasks];
+    nextOpen.splice(sourceIndex, 1);
+    nextOpen.splice(targetIndex, 0, moving);
+    const nextOrders = new Map(
+      nextOpen.map((task, position) => [task.id, (position + 1) * 10]),
+    );
+    const previous = tasks;
+    setError(null);
+    setBusyTaskId(sourceTaskId);
     setTasks((current) =>
       current.map((task) => {
         const order = nextOrders.get(task.id);
@@ -937,11 +984,33 @@ export function PlanWorkspace({
                     readOnly={readOnly}
                     canMoveUp={openIndex > 0}
                     canMoveDown={openIndex < openTasks.length - 1}
+                    isDragging={draggedTaskId === task.id}
+                    isDragOver={dragOverTaskId === task.id}
                     onStatus={changeStatus}
                     onSave={saveTask}
                     onDelete={deleteTask}
                     onStart={chooseStart}
                     onMove={moveTask}
+                    onDragStart={() => setDraggedTaskId(task.id)}
+                    onDragOver={() => {
+                      if (dragOverTaskId !== task.id) {
+                        setDragOverTaskId(task.id);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverTaskId === task.id) {
+                        setDragOverTaskId(null);
+                      }
+                    }}
+                    onDrop={(sourceId) => {
+                      reorderOpenTasks(sourceId, task.id);
+                      setDraggedTaskId(null);
+                      setDragOverTaskId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedTaskId(null);
+                      setDragOverTaskId(null);
+                    }}
                   />
                 );
               })}
@@ -1118,11 +1187,18 @@ interface TaskRowProps {
   readOnly: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
   onStatus: (taskId: string, status: TaskStatus) => void;
   onSave: (taskId: string, patch: Record<string, unknown>) => Promise<boolean>;
   onDelete: (taskId: string) => Promise<boolean>;
   onStart: (taskId: string) => void;
   onMove: (taskId: string, direction: -1 | 1) => void;
+  onDragStart?: () => void;
+  onDragOver?: () => void;
+  onDragLeave?: () => void;
+  onDrop?: (sourceTaskId: string) => void;
+  onDragEnd?: () => void;
 }
 
 function TaskRow({
@@ -1133,11 +1209,18 @@ function TaskRow({
   readOnly,
   canMoveUp,
   canMoveDown,
+  isDragging,
+  isDragOver,
   onStatus,
   onSave,
   onDelete,
   onStart,
   onMove,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
 }: TaskRowProps) {
   const [form, setForm] = useState({
     title: task.title,
@@ -1196,9 +1279,34 @@ function TaskRow({
   return (
     <li
       id={`task-${task.id}`}
+      draggable={!readOnly && !busy && task.status !== "done"}
+      onDragStart={(event) => {
+        event.dataTransfer.setData("text/plain", task.id);
+        event.dataTransfer.effectAllowed = "move";
+        onDragStart?.();
+      }}
+      onDragOver={(event) => {
+        if (readOnly || task.status === "done") return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        onDragOver?.();
+      }}
+      onDragLeave={() => onDragLeave?.()}
+      onDrop={(event) => {
+        if (readOnly || task.status === "done") return;
+        event.preventDefault();
+        const sourceTaskId = event.dataTransfer.getData("text/plain");
+        if (sourceTaskId && sourceTaskId !== task.id) {
+          onDrop?.(sourceTaskId);
+        }
+        onDragEnd?.();
+      }}
+      onDragEnd={() => onDragEnd?.()}
       className={`task-item ${isNext ? "is-next" : ""} ${
         task.status === "done" ? "is-done" : ""
-      } ${waiting.length > 0 ? "is-waiting" : ""}`}
+      } ${waiting.length > 0 ? "is-waiting" : ""} ${
+        isDragging ? "is-dragging" : ""
+      } ${isDragOver ? "drag-over" : ""}`}
     >
       <div className="task-status-col">
         <label className="sr-only" htmlFor={`status-${task.id}`}>

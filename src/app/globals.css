@@ -2179,6 +2179,19 @@ svg {
   box-shadow: 0 0 0 4px rgba(25, 75, 54, 0.055);
 }
 
+.task-edit-card.is-dragging,
+.task-item.is-dragging {
+  opacity: 0.45;
+  border-style: dashed;
+  cursor: grabbing;
+}
+
+.task-edit-card.drag-over,
+.task-item.drag-over {
+  border-color: var(--forest);
+  box-shadow: 0 0 0 3px rgba(25, 75, 54, 0.18);
+}
+
 .task-edit-card.is-start {
   border-color: rgba(25, 75, 54, 0.36);
   background: var(--paper-bright);

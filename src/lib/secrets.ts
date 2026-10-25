@@ -58,6 +58,16 @@ function encryptionKey(): Buffer {
   return createHash("sha256").update(getAppSecret()).digest();
 }
 
+function previousEncryptionKeys(): Buffer[] {
+  const previous = process.env.APP_PREVIOUS_SECRETS?.trim();
+  if (!previous) return [];
+  return previous
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((secret) => createHash("sha256").update(secret).digest());
+}
+
 export function encryptText(value: string | null | undefined): string | null {
   if (!value) return null;
   const iv = randomBytes(12);
@@ -79,20 +89,26 @@ export function decryptText(value: string | null | undefined): string {
   if (!value) return "";
   const parts = value.split(".");
   if (parts.length !== 4 || parts[0] !== "v1") return "";
-  try {
-    const decipher = createDecipheriv(
-      "aes-256-gcm",
-      encryptionKey(),
-      Buffer.from(parts[1], "base64url"),
-    );
-    decipher.setAuthTag(Buffer.from(parts[2], "base64url"));
-    return Buffer.concat([
-      decipher.update(Buffer.from(parts[3], "base64url")),
-      decipher.final(),
-    ]).toString("utf8");
-  } catch {
-    return "";
+
+  const iv = Buffer.from(parts[1], "base64url");
+  const tag = Buffer.from(parts[2], "base64url");
+  const ciphertext = Buffer.from(parts[3], "base64url");
+
+  const candidateKeys = [encryptionKey(), ...previousEncryptionKeys()];
+  for (const key of candidateKeys) {
+    try {
+      const decipher = createDecipheriv("aes-256-gcm", key, iv);
+      decipher.setAuthTag(tag);
+      return Buffer.concat([
+        decipher.update(ciphertext),
+        decipher.final(),
+      ]).toString("utf8");
+    } catch {
+      continue;
+    }
   }
+
+  return "";
 }
 
 export function hashIdentifier(value: string): string {
