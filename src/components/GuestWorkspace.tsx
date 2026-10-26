@@ -9,6 +9,8 @@ import {
   CheckIcon,
   ClockIcon,
   DownloadIcon,
+  EyeIcon,
+  EyeOffIcon,
   FlagIcon,
   NoteIcon,
   PlusIcon,
@@ -16,6 +18,7 @@ import {
   SparkIcon,
   TrashIcon,
 } from "@/components/Icons";
+import { BlindfoldCard } from "@/components/BlindfoldCard";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { formatEffort, pluralize } from "@/lib/format";
 import { formatSpokenChunk } from "@/lib/use-voice-dictation";
@@ -102,6 +105,8 @@ export function GuestWorkspace() {
   // Task editing / notes state
   const [openNoteTaskId, setOpenNoteTaskId] = useState<string | null>(null);
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
+  const [isBlindfold, setIsBlindfold] = useState(false);
+  const [blindfoldSkipIndex, setBlindfoldSkipIndex] = useState(0);
 
   function handleUsePreset(preset: (typeof PRESETS)[0]) {
     setOutcome(preset.outcome);
@@ -322,6 +327,17 @@ export function GuestWorkspace() {
   const doneTasks = guestPlan?.tasks.filter((t) => t.status === "done").length ?? 0;
   const progressPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const startTask = guestPlan?.tasks.find((t) => t.id === guestPlan.startTaskId) || guestPlan?.tasks[0];
+
+  const incompleteTasks = guestPlan?.tasks.filter((t) => t.status !== "done") ?? [];
+  const focusTask =
+    incompleteTasks.length === 0
+      ? null
+      : (guestPlan?.startTaskId &&
+          incompleteTasks.find((t) => t.id === guestPlan.startTaskId) &&
+          blindfoldSkipIndex === 0)
+        ? incompleteTasks.find((t) => t.id === guestPlan.startTaskId)!
+        : incompleteTasks[blindfoldSkipIndex % incompleteTasks.length]!;
+  const focusStepNumber = focusTask ? (guestPlan?.tasks.indexOf(focusTask) ?? 0) + 1 : totalTasks;
 
   return (
     <div className="guest-container" style={{ maxWidth: 840, margin: "0 auto", padding: "24px 16px" }}>
@@ -593,7 +609,17 @@ export function GuestWorkspace() {
                 </p>
               </div>
 
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${isBlindfold ? "btn-primary" : "btn-outline"}`}
+                  onClick={() => setIsBlindfold((prev) => !prev)}
+                  id="guest-blindfold-btn"
+                  title="Focus on one step at a time without seeing the rest of the list"
+                >
+                  {isBlindfold ? <EyeIcon style={{ width: 14, height: 14 }} /> : <EyeOffIcon style={{ width: 14, height: 14 }} />}
+                  <span>{isBlindfold ? "Exit Blindfold" : "🙈 Blindfold Mode"}</span>
+                </button>
                 <button
                   type="button"
                   className="btn btn-outline btn-sm"
@@ -648,13 +674,35 @@ export function GuestWorkspace() {
             </div>
           </div>
 
-          {/* Focused First Step Hero Card if not completed */}
-          {startTask && startTask.status !== "done" && (
-            <div
-              className="start-hero-card"
-              style={{
-                background: "var(--surface)",
-                border: "2px solid var(--accent)",
+          {/* Main workspace view or Blindfold Focus Card */}
+          {isBlindfold ? (
+            <BlindfoldCard
+              task={focusTask}
+              stepNumber={focusStepNumber}
+              totalSteps={totalTasks}
+              completedCount={doneTasks}
+              onComplete={(taskId) => {
+                handleToggleTask(taskId);
+                setBlindfoldSkipIndex(0);
+              }}
+              onSkip={() => {
+                setBlindfoldSkipIndex((prev) => prev + 1);
+              }}
+              onUpdateNote={(taskId, note) => {
+                handleUpdateNote(taskId, note);
+              }}
+              onExit={() => setIsBlindfold(false)}
+              onReset={handleReset}
+            />
+          ) : (
+            <>
+              {/* Focused First Step Hero Card if not completed */}
+              {startTask && startTask.status !== "done" && (
+                <div
+                  className="start-hero-card"
+                  style={{
+                    background: "var(--surface)",
+                    border: "2px solid var(--accent)",
                 borderRadius: 12,
                 padding: "20px 24px",
                 marginBottom: 24,
@@ -846,6 +894,8 @@ export function GuestWorkspace() {
               })}
             </ol>
           </div>
+        </>
+      )}
 
           {/* Bottom Conversion Promotion */}
           <div

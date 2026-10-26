@@ -16,6 +16,8 @@ import {
   ClockIcon,
   CloseIcon,
   DownloadIcon,
+  EyeIcon,
+  EyeOffIcon,
   FlagIcon,
   LockIcon,
   NoteIcon,
@@ -26,6 +28,7 @@ import {
   SparkIcon,
   WarningIcon,
 } from "@/components/Icons";
+import { BlindfoldCard } from "@/components/BlindfoldCard";
 import {
   formatDeadlineRelative,
   formatEffort,
@@ -98,6 +101,8 @@ export function PlanWorkspace({
     effortMin: "30",
     effortMax: "60",
   });
+  const [isBlindfold, setIsBlindfold] = useState(false);
+  const [blindfoldSkipIndex, setBlindfoldSkipIndex] = useState(0);
 
   const readOnly = archived;
   const sortedTasks = sortTasks(tasks);
@@ -128,6 +133,16 @@ export function PlanWorkspace({
   ).length;
   const blockedCount = openTasks.filter((task) => task.status === "blocked").length;
   const startTask = tasks.find((task) => task.id === startTaskId) ?? null;
+
+  const focusTask =
+    openTasks.length === 0
+      ? null
+      : (startTaskId &&
+          openTasks.find((task) => task.id === startTaskId) &&
+          blindfoldSkipIndex === 0)
+        ? openTasks.find((task) => task.id === startTaskId)!
+        : openTasks[blindfoldSkipIndex % openTasks.length]!;
+  const focusStepNumber = focusTask ? sortedTasks.indexOf(focusTask) + 1 : tasks.length;
 
   function replaceTask(taskId: string, patch: Partial<TaskView>) {
     setTasks((current) => {
@@ -663,6 +678,18 @@ export function PlanWorkspace({
           </div>
         </div>
         <div className="plan-toolbar">
+          {!archived && tasks.length > 0 ? (
+            <button
+              type="button"
+              className={`btn ${isBlindfold ? "btn-primary" : "btn-outline"}`}
+              onClick={() => setIsBlindfold((prev) => !prev)}
+              id="plan-blindfold-btn"
+              title="Focus on one step at a time without seeing the rest of the list"
+            >
+              {isBlindfold ? <EyeIcon /> : <EyeOffIcon />}
+              <span>{isBlindfold ? "Exit Blindfold" : "🙈 Blindfold Mode"}</span>
+            </button>
+          ) : null}
           {!archived ? (
             <Link href={`/plans/${plan.id}/revise`} className="btn btn-primary">
               <RotateIcon />
@@ -681,7 +708,42 @@ export function PlanWorkspace({
         </div>
       </header>
 
-      <div className="overview-grid">
+      {isBlindfold ? (
+        <BlindfoldCard
+          task={
+            focusTask
+              ? {
+                  id: focusTask.id,
+                  title: focusTask.title,
+                  description: focusTask.description,
+                  effortMin: focusTask.effortMin,
+                  effortMax: focusTask.effortMax,
+                  status: focusTask.status,
+                  note: focusTask.note,
+                }
+              : null
+          }
+          stepNumber={focusStepNumber}
+          totalSteps={tasks.length}
+          completedCount={doneTasks.length}
+          onComplete={(taskId) => {
+            const targetTask = tasks.find((t) => t.id === taskId);
+            if (targetTask) {
+              markDone(targetTask);
+              setBlindfoldSkipIndex(0);
+            }
+          }}
+          onSkip={() => {
+            setBlindfoldSkipIndex((prev) => prev + 1);
+          }}
+          onUpdateNote={(taskId, note) => {
+            saveTask(taskId, { note });
+          }}
+          onExit={() => setIsBlindfold(false)}
+        />
+      ) : (
+        <>
+          <div className="overview-grid">
         {nextTask ? (
           <section className="next-action" aria-labelledby="next-action-title">
             <div className="next-action-label">
@@ -832,6 +894,17 @@ export function PlanWorkspace({
               <span className="pill">
                 {pluralize(tasks.length - doneTasks.length, "open task")}
               </span>
+              {!readOnly && tasks.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setIsBlindfold(true)}
+                  title="Focus on one step at a time"
+                >
+                  <EyeOffIcon />
+                  Blindfold
+                </button>
+              ) : null}
               {!readOnly ? (
                 <button
                   type="button"
@@ -1164,6 +1237,8 @@ export function PlanWorkspace({
           </Link>
         </aside>
       </div>
+    </>
+  )}
 
       <ConfirmDialog
         open={deleteOpen}
