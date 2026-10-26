@@ -20,6 +20,7 @@ import {
   TrashIcon,
 } from "@/components/Icons";
 import { BlindfoldCard } from "@/components/BlindfoldCard";
+import { MicroSprintTimer } from "@/components/MicroSprintTimer";
 import { ShareCardModal } from "@/components/ShareCardModal";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { formatEffort, pluralize } from "@/lib/format";
@@ -110,6 +111,7 @@ export function GuestWorkspace() {
   const [isBlindfold, setIsBlindfold] = useState(false);
   const [blindfoldSkipIndex, setBlindfoldSkipIndex] = useState(0);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [activeSprintTask, setActiveSprintTask] = useState<{ id: string; title: string } | null>(null);
 
   function handleUsePreset(preset: (typeof PRESETS)[0]) {
     setOutcome(preset.outcome);
@@ -707,6 +709,7 @@ export function GuestWorkspace() {
               onExit={() => setIsBlindfold(false)}
               onReset={handleReset}
               onShare={() => setIsShareModalOpen(true)}
+              onStartSprint={(t) => setActiveSprintTask({ id: t.id, title: t.title })}
             />
           ) : (
             <>
@@ -737,13 +740,24 @@ export function GuestWorkspace() {
                   <ClockIcon style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
                   Estimated effort: {formatEffort(startTask.effortMin, startTask.effortMax)}
                 </span>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => handleToggleTask(startTask.id)}
-                >
-                  <CheckIcon /> Mark Step Complete
-                </button>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    id="guest-hero-sprint-btn"
+                    onClick={() => setActiveSprintTask({ id: startTask.id, title: startTask.title })}
+                    title="Commit to just 5 minutes on this task"
+                  >
+                    ⏱️ 5-Min Sprint
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => handleToggleTask(startTask.id)}
+                  >
+                    <CheckIcon /> Mark Step Complete
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -950,6 +964,17 @@ export function GuestWorkspace() {
             totalEffortMin: guestPlan.tasks.reduce((acc, t) => acc + (t.effortMin || 0), 0),
             tasks: guestPlan.tasks.map((t) => ({ title: t.title, status: t.status })),
           }}
+        />
+      )}
+
+      {activeSprintTask && (
+        <MicroSprintTimer
+          task={activeSprintTask}
+          onCompleteTask={(taskId) => {
+            handleToggleTask(taskId);
+            setActiveSprintTask(null);
+          }}
+          onClose={() => setActiveSprintTask(null)}
         />
       )}
     </div>

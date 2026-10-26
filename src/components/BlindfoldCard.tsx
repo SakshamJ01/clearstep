@@ -35,6 +35,7 @@ interface BlindfoldCardProps {
   onExit: () => void;
   onReset?: () => void;
   onShare?: () => void;
+  onStartSprint?: (task: BlindfoldTask) => void;
 }
 
 export function BlindfoldCard({
@@ -48,6 +49,7 @@ export function BlindfoldCard({
   onExit,
   onReset,
   onShare,
+  onStartSprint,
 }: BlindfoldCardProps) {
   const [isNoteOpen, setIsNoteOpen] = useState(false);
 
@@ -249,15 +251,29 @@ export function BlindfoldCard({
             paddingTop: 24,
           }}
         >
-          <button
-            type="button"
-            className="btn btn-primary btn-lg"
-            id="blindfold-complete-btn"
-            onClick={() => onComplete(task.id)}
-            title="Complete this task and reveal the next step (Cmd/Ctrl + Enter)"
-          >
-            <CheckIcon /> Mark Done & Reveal Next →
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              type="button"
+              className="btn btn-primary btn-lg"
+              id="blindfold-complete-btn"
+              onClick={() => onComplete(task.id)}
+              title="Complete this task and reveal the next step (Cmd/Ctrl + Enter)"
+            >
+              <CheckIcon /> Mark Done & Reveal Next →
+            </button>
+
+            {onStartSprint && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                id="blindfold-sprint-btn"
+                onClick={() => onStartSprint(task)}
+                title="Start a 5-minute anti-procrastination sprint on this step"
+              >
+                ⏱️ 5-Min Sprint
+              </button>
+            )}
+          </div>
 
           {totalSteps - completedCount > 1 && (
             <button

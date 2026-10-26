@@ -30,6 +30,7 @@ import {
   WarningIcon,
 } from "@/components/Icons";
 import { BlindfoldCard } from "@/components/BlindfoldCard";
+import { MicroSprintTimer } from "@/components/MicroSprintTimer";
 import { ShareCardModal } from "@/components/ShareCardModal";
 import {
   formatDeadlineRelative,
@@ -106,6 +107,7 @@ export function PlanWorkspace({
   const [isBlindfold, setIsBlindfold] = useState(false);
   const [blindfoldSkipIndex, setBlindfoldSkipIndex] = useState(0);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [activeSprintTask, setActiveSprintTask] = useState<{ id: string; title: string } | null>(null);
 
   const readOnly = archived;
   const sortedTasks = sortTasks(tasks);
@@ -756,6 +758,7 @@ export function PlanWorkspace({
           }}
           onExit={() => setIsBlindfold(false)}
           onShare={() => setIsShareModalOpen(true)}
+          onStartSprint={(t) => setActiveSprintTask({ id: t.id, title: t.title })}
         />
       ) : (
         <>
@@ -792,6 +795,17 @@ export function PlanWorkspace({
                 >
                   <PlayIcon />
                   Start it
+                </button>
+              ) : null}
+              {!readOnly ? (
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  id="plan-next-sprint-btn"
+                  onClick={() => setActiveSprintTask({ id: nextTask.id, title: nextTask.title })}
+                  title="Commit to just 5 minutes on this task"
+                >
+                  ⏱️ 5-Min Sprint
                 </button>
               ) : null}
               <button
@@ -1279,6 +1293,18 @@ export function PlanWorkspace({
           tasks: tasks.map((t) => ({ title: t.title, status: t.status })),
         }}
       />
+
+      {activeSprintTask && (
+        <MicroSprintTimer
+          task={activeSprintTask}
+          onCompleteTask={(taskId) => {
+            const target = tasks.find((t) => t.id === taskId);
+            if (target) markDone(target);
+            setActiveSprintTask(null);
+          }}
+          onClose={() => setActiveSprintTask(null)}
+        />
+      )}
     </>
   );
 }
