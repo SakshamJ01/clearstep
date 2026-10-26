@@ -15,10 +15,12 @@ import {
   NoteIcon,
   PlusIcon,
   RotateIcon,
+  ShareIcon,
   SparkIcon,
   TrashIcon,
 } from "@/components/Icons";
 import { BlindfoldCard } from "@/components/BlindfoldCard";
+import { ShareCardModal } from "@/components/ShareCardModal";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { formatEffort, pluralize } from "@/lib/format";
 import { formatSpokenChunk } from "@/lib/use-voice-dictation";
@@ -107,6 +109,7 @@ export function GuestWorkspace() {
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
   const [isBlindfold, setIsBlindfold] = useState(false);
   const [blindfoldSkipIndex, setBlindfoldSkipIndex] = useState(0);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   function handleUsePreset(preset: (typeof PRESETS)[0]) {
     setOutcome(preset.outcome);
@@ -623,6 +626,16 @@ export function GuestWorkspace() {
                 <button
                   type="button"
                   className="btn btn-outline btn-sm"
+                  onClick={() => setIsShareModalOpen(true)}
+                  id="guest-share-card-btn"
+                  title="Generate a beautiful share card for your progress"
+                >
+                  <ShareIcon style={{ width: 14, height: 14 }} />
+                  <span>Share Card</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
                   onClick={handleCopyMarkdown}
                   title="Copy as Markdown"
                 >
@@ -693,6 +706,7 @@ export function GuestWorkspace() {
               }}
               onExit={() => setIsBlindfold(false)}
               onReset={handleReset}
+              onShare={() => setIsShareModalOpen(true)}
             />
           ) : (
             <>
@@ -922,6 +936,21 @@ export function GuestWorkspace() {
             </div>
           </div>
         </section>
+      )}
+
+      {guestPlan && (
+        <ShareCardModal
+          open={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          data={{
+            title: guestPlan.title,
+            desiredOutcome: guestPlan.desiredOutcome,
+            totalTasks,
+            completedTasks: doneTasks,
+            totalEffortMin: guestPlan.tasks.reduce((acc, t) => acc + (t.effortMin || 0), 0),
+            tasks: guestPlan.tasks.map((t) => ({ title: t.title, status: t.status })),
+          }}
+        />
       )}
     </div>
   );

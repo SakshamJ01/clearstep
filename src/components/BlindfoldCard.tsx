@@ -9,6 +9,7 @@ import {
   EyeIcon,
   NoteIcon,
   RotateIcon,
+  ShareIcon,
   SparkIcon,
 } from "@/components/Icons";
 import { formatEffort } from "@/lib/format";
@@ -33,6 +34,7 @@ interface BlindfoldCardProps {
   onUpdateNote: (taskId: string, note: string) => void;
   onExit: () => void;
   onReset?: () => void;
+  onShare?: () => void;
 }
 
 export function BlindfoldCard({
@@ -45,6 +47,7 @@ export function BlindfoldCard({
   onUpdateNote,
   onExit,
   onReset,
+  onShare,
 }: BlindfoldCardProps) {
   const [isNoteOpen, setIsNoteOpen] = useState(false);
 
@@ -119,9 +122,19 @@ export function BlindfoldCard({
         </p>
 
         <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          {onShare && (
+            <button
+              type="button"
+              className="btn btn-primary btn-lg"
+              id="blindfold-share-victory-btn"
+              onClick={onShare}
+            >
+              <ShareIcon /> Share Momentum Card
+            </button>
+          )}
           <button
             type="button"
-            className="btn btn-primary btn-lg"
+            className="btn btn-outline btn-lg"
             onClick={onExit}
           >
             <EyeIcon /> View Full Plan Overview
@@ -129,7 +142,7 @@ export function BlindfoldCard({
           {onReset && (
             <button
               type="button"
-              className="btn btn-outline btn-lg"
+              className="btn btn-ghost btn-lg"
               onClick={onReset}
             >
               <RotateIcon /> Start a New Dump

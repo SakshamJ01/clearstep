@@ -25,10 +25,12 @@ import {
   PlayIcon,
   PlusIcon,
   RotateIcon,
+  ShareIcon,
   SparkIcon,
   WarningIcon,
 } from "@/components/Icons";
 import { BlindfoldCard } from "@/components/BlindfoldCard";
+import { ShareCardModal } from "@/components/ShareCardModal";
 import {
   formatDeadlineRelative,
   formatEffort,
@@ -103,6 +105,7 @@ export function PlanWorkspace({
   });
   const [isBlindfold, setIsBlindfold] = useState(false);
   const [blindfoldSkipIndex, setBlindfoldSkipIndex] = useState(0);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const readOnly = archived;
   const sortedTasks = sortTasks(tasks);
@@ -690,6 +693,18 @@ export function PlanWorkspace({
               <span>{isBlindfold ? "Exit Blindfold" : "🙈 Blindfold Mode"}</span>
             </button>
           ) : null}
+          {tasks.length > 0 ? (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setIsShareModalOpen(true)}
+              id="plan-share-card-btn"
+              title="Generate a shareable progress card"
+            >
+              <ShareIcon />
+              <span>Share Card</span>
+            </button>
+          ) : null}
           {!archived ? (
             <Link href={`/plans/${plan.id}/revise`} className="btn btn-primary">
               <RotateIcon />
@@ -740,6 +755,7 @@ export function PlanWorkspace({
             saveTask(taskId, { note });
           }}
           onExit={() => setIsBlindfold(false)}
+          onShare={() => setIsShareModalOpen(true)}
         />
       ) : (
         <>
@@ -1249,6 +1265,19 @@ export function PlanWorkspace({
         busy={deleting}
         onConfirm={deletePlan}
         onCancel={() => setDeleteOpen(false)}
+      />
+
+      <ShareCardModal
+        open={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        data={{
+          title: plan.title,
+          desiredOutcome: plan.desiredOutcome,
+          totalTasks: tasks.length,
+          completedTasks: doneTasks.length,
+          totalEffortMin: tasks.reduce((acc, t) => acc + (t.effortMin || 0), 0),
+          tasks: tasks.map((t) => ({ title: t.title, status: t.status })),
+        }}
       />
     </>
   );
