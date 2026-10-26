@@ -4377,7 +4377,216 @@ dialog.dialog::backdrop {
   gap: 6px;
 }
 
+/* Feature #6: Emergency De-escalation First-Aid Studio */
+.emergency-studio {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.emergency-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.emergency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--forest);
+  background: var(--acid-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(25, 75, 54, 0.15);
+}
+
+.emergency-phase-card {
+  background: var(--paper-bright);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-card);
+}
+
+.breath-orb-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  position: relative;
+}
+
+.breath-orb {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #25664a, var(--forest-deep));
+  color: var(--paper-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 4s ease;
+  box-shadow: 0 0 45px rgba(25, 75, 54, 0.28);
+  margin-bottom: 24px;
+}
+
+.breath-orb-inhale {
+  box-shadow: 0 0 65px rgba(217, 236, 125, 0.55), 0 0 30px rgba(25, 75, 54, 0.4);
+}
+
+.breath-orb-hold-in {
+  box-shadow: 0 0 70px rgba(217, 236, 125, 0.65), 0 0 40px rgba(25, 75, 54, 0.5);
+}
+
+.breath-orb-exhale {
+  box-shadow: 0 0 35px rgba(25, 75, 54, 0.2);
+}
+
+.breath-orb-rest {
+  box-shadow: 0 0 25px rgba(25, 75, 54, 0.15);
+}
+
+.breath-orb.is-paused {
+  transition: none;
+  opacity: 0.75;
+}
+
+.breath-orb-inner {
+  text-align: center;
+  z-index: 2;
+  user-select: none;
+}
+
+.breath-orb-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--acid);
+}
+
+.breath-orb-counter {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  line-height: 1;
+  font-weight: 700;
+  margin: 2px 0;
+}
+
+.breath-orb-sub {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  letter-spacing: 0.05em;
+}
+
+.breath-instruction {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.breath-instruction-primary {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--forest-deep);
+  margin-bottom: 4px;
+}
+
+.breath-instruction-secondary {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.breath-meta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.cycle-counter {
+  font-weight: 700;
+  color: var(--forest);
+  background: var(--paper-warm);
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+}
+
+.reassurance-text {
+  color: var(--muted);
+  font-style: italic;
+  max-width: 420px;
+}
+
+.emergency-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+
+.grounding-reassurance-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--paper-warm);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--forest);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--forest-deep);
+  margin-bottom: 18px;
+}
+
+.reality-check-verdict {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--acid-soft);
+  color: var(--forest-deep);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  border: 1px solid rgba(25, 75, 54, 0.15);
+}
+
+.action-launch-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.action-launch-card {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 18px !important;
+  border-radius: var(--radius-md) !important;
+  text-align: left;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .breath-orb {
+    transform: none !important;
+    transition: none !important;
+  }
+
   html {
     scroll-behavior: auto;
   }
@@ -4391,3 +4600,4 @@ dialog.dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+

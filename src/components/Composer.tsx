@@ -18,6 +18,7 @@ import {
   WarningIcon,
 } from "@/components/Icons";
 import { clearComposerDraft, composerDraftKey } from "@/lib/composer-draft";
+import { OverwhelmModal } from "@/components/OverwhelmModal";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { formatSpokenChunk } from "@/lib/use-voice-dictation";
 import type { AiPreference } from "@/lib/schemas";
@@ -115,6 +116,7 @@ export function Composer({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isOverwhelmModalOpen, setIsOverwhelmModalOpen] = useState(false);
   const [safety, setSafety] = useState<{
     message: string;
     detail: string;
@@ -427,7 +429,17 @@ export function Composer({
               <label className="field-label" htmlFor={dumpId}>
                 What&apos;s taking up space?
               </label>
-              <div className="row" style={{ gap: 12, alignItems: "center" }}>
+              <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  id="composer-overwhelm-trigger-btn"
+                  onClick={() => setIsOverwhelmModalOpen(true)}
+                  style={{ fontSize: "12px", padding: "4px 8px" }}
+                  title="Take a 60-second breathing & cognitive grounding reset"
+                >
+                  🌱 Overwhelmed?
+                </button>
                 <VoiceInputButton
                   onTranscriptChunk={(chunk) => {
                     setDump((prev) => formatSpokenChunk(prev, chunk));
@@ -795,6 +807,12 @@ export function Composer({
           </div>
         </aside>
       </div>
+
+      <OverwhelmModal
+        open={isOverwhelmModalOpen}
+        onClose={() => setIsOverwhelmModalOpen(false)}
+        initialHeaviestThought={dump}
+      />
     </>
   );
 }

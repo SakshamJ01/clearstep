@@ -9,6 +9,7 @@ import type { SessionUser } from "@/lib/auth";
 const links = [
   { href: "/compose", label: "New plan" },
   { href: "/plans", label: "My plans" },
+  { href: "/reset", label: "🌱 Reset" },
   { href: "/settings", label: "Settings" },
 ];
 

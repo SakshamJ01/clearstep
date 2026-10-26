@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState, useSyncExternalStore, type DragEvent, type FormEvent } from "react";
+import { useId, useState, useEffect, useSyncExternalStore, type DragEvent, type FormEvent } from "react";
 import {
   ArrowDownIcon,
   ArrowRightIcon,
@@ -21,6 +21,7 @@ import {
 } from "@/components/Icons";
 import { BlindfoldCard } from "@/components/BlindfoldCard";
 import { MicroSprintTimer } from "@/components/MicroSprintTimer";
+import { OverwhelmModal } from "@/components/OverwhelmModal";
 import { ShareCardModal } from "@/components/ShareCardModal";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { formatEffort, pluralize } from "@/lib/format";
@@ -97,7 +98,19 @@ export function GuestWorkspace() {
         : "review";
 
   // Composer fields
-  const [dump, setDump] = useState("");
+  const [dump, setDump] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const prefill = window.sessionStorage.getItem("clearstep_reset_prefill");
+      if (prefill) {
+        window.sessionStorage.removeItem("clearstep_reset_prefill");
+        return prefill;
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+    return "";
+  });
   const [outcome, setOutcome] = useState("");
   const [composerError, setComposerError] = useState<string | null>(null);
 
@@ -111,6 +124,7 @@ export function GuestWorkspace() {
   const [isBlindfold, setIsBlindfold] = useState(false);
   const [blindfoldSkipIndex, setBlindfoldSkipIndex] = useState(0);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isOverwhelmModalOpen, setIsOverwhelmModalOpen] = useState(false);
   const [activeSprintTask, setActiveSprintTask] = useState<{ id: string; title: string } | null>(null);
 
   function handleUsePreset(preset: (typeof PRESETS)[0]) {
@@ -413,11 +427,23 @@ export function GuestWorkspace() {
                 <label className="field-label" htmlFor={dumpId} style={{ marginBottom: 0 }}>
                   The Brain Dump <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
-                <VoiceInputButton
-                  onTranscriptChunk={(chunk) => {
-                    setDump((prev) => formatSpokenChunk(prev, chunk));
-                  }}
-                />
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    id="guest-overwhelm-trigger-btn"
+                    onClick={() => setIsOverwhelmModalOpen(true)}
+                    style={{ fontSize: "12px", padding: "4px 8px" }}
+                    title="Take a 60-second breathing & cognitive grounding reset"
+                  >
+                    🌱 Overwhelmed?
+                  </button>
+                  <VoiceInputButton
+                    onTranscriptChunk={(chunk) => {
+                      setDump((prev) => formatSpokenChunk(prev, chunk));
+                    }}
+                  />
+                </div>
               </div>
               <textarea
                 id={dumpId}
@@ -966,6 +992,12 @@ export function GuestWorkspace() {
           }}
         />
       )}
+
+      <OverwhelmModal
+        open={isOverwhelmModalOpen}
+        onClose={() => setIsOverwhelmModalOpen(false)}
+        initialHeaviestThought={dump}
+      />
 
       {activeSprintTask && (
         <MicroSprintTimer

@@ -36,6 +36,9 @@ export default async function LandingPage() {
               </>
             ) : (
               <>
+                <Link href="/reset" className="btn btn-ghost" title="60-second breathing & cognitive grounding">
+                  🌱 Reset
+                </Link>
                 <Link href="/try" className="btn btn-ghost">
                   Try guest mode
                 </Link>
@@ -55,7 +58,27 @@ export default async function LandingPage() {
       <main id="main">
         <section className="container hero">
           <div className="hero-copy">
-            <div className="eyebrow">A quieter way to plan</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+              <div className="eyebrow" style={{ marginBottom: 0 }}>A quieter way to plan</div>
+              <Link
+                href="/reset"
+                style={{
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                  background: "var(--acid-soft)",
+                  color: "var(--forest)",
+                  border: "1px solid rgba(25, 75, 54, 0.15)",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <span>🌱 Overwhelmed right now? 60s reset →</span>
+              </Link>
+            </div>
             <h1>
               Get it out of your head. Then take{" "}
               <span className="hero-em">one clear step.</span>
