@@ -73,6 +73,17 @@ export function MicroSprintTimer({
     return () => window.clearInterval(intervalId);
   }, [status]);
 
+  const onCloseRef = useRef(onClose);
+  const togglePlayPauseRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    togglePlayPauseRef.current = togglePlayPause;
+  });
+
   // Keyboard shortcuts: Space to toggle pause/play, Esc to dismiss
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -81,16 +92,16 @@ export function MicroSprintTimer({
       }
       if (e.key === " " && status !== "finished") {
         e.preventDefault();
-        togglePlayPause();
+        togglePlayPauseRef.current();
       } else if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  });
+  }, [status]);
 
   function startSprint(mins: number) {
     setDurationMinutes(mins);
@@ -102,7 +113,9 @@ export function MicroSprintTimer({
 
   function togglePlayPause() {
     if (status === "running") {
-      pausedRemainingRef.current = remainingSeconds;
+      const currentLeft = Math.max(0, Math.ceil((targetEndRef.current - Date.now()) / 1000));
+      pausedRemainingRef.current = currentLeft;
+      setRemainingSeconds(currentLeft);
       setStatus("paused");
     } else if (status === "paused") {
       targetEndRef.current = Date.now() + pausedRemainingRef.current * 1000;
@@ -117,9 +130,12 @@ export function MicroSprintTimer({
   function handleExtend(mins = 5) {
     const extraSeconds = mins * 60;
     const nextTotal = durationMinutes + mins;
+    const currentRemaining = status === "finished" ? 0 : Math.max(0, remainingSeconds);
+    const nextRemaining = currentRemaining + extraSeconds;
     setDurationMinutes(nextTotal);
-    setRemainingSeconds(extraSeconds);
-    targetEndRef.current = Date.now() + extraSeconds * 1000;
+    setRemainingSeconds(nextRemaining);
+    targetEndRef.current = Date.now() + nextRemaining * 1000;
+    pausedRemainingRef.current = nextRemaining;
     setStatus("running");
   }
 

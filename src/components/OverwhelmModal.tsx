@@ -7,12 +7,14 @@ interface OverwhelmModalProps {
   open: boolean;
   onClose: () => void;
   initialHeaviestThought?: string;
+  onTransferToPlan?: (text: string) => void;
 }
 
 export function OverwhelmModal({
   open,
   onClose,
   initialHeaviestThought = "",
+  onTransferToPlan,
 }: OverwhelmModalProps) {
   // ESC key listener
   useEffect(() => {
@@ -70,6 +72,7 @@ export function OverwhelmModal({
           onDismiss={onClose}
           isModal={true}
           initialHeaviestThought={initialHeaviestThought}
+          onTransferToPlan={onTransferToPlan}
         />
       </div>
     </div>

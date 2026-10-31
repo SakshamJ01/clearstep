@@ -88,7 +88,14 @@ export function GuestWorkspace() {
     () => null,
   );
 
-  const [isEditingDump, setIsEditingDump] = useState(false);
+  const [isEditingDump, setIsEditingDump] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return Boolean(window.sessionStorage.getItem("clearstep_reset_prefill"));
+    } catch {
+      return false;
+    }
+  });
 
   const mode =
     isEditingDump || !guestPlan
@@ -192,6 +199,24 @@ export function GuestWorkspace() {
         ...task,
         status: isDone ? "not_started" : "done",
         completedAt: isDone ? null : now,
+      };
+    });
+
+    saveGuestPlan({
+      ...guestPlan,
+      tasks: updatedTasks,
+    });
+  }
+
+  function handleSetTaskDone(taskId: string) {
+    if (!guestPlan) return;
+    const now = new Date().toISOString();
+    const updatedTasks: GuestTask[] = guestPlan.tasks.map((task) => {
+      if (task.id !== taskId) return task;
+      return {
+        ...task,
+        status: "done",
+        completedAt: task.completedAt || now,
       };
     });
 
@@ -348,14 +373,17 @@ export function GuestWorkspace() {
   const startTask = guestPlan?.tasks.find((t) => t.id === guestPlan.startTaskId) || guestPlan?.tasks[0];
 
   const incompleteTasks = guestPlan?.tasks.filter((t) => t.status !== "done") ?? [];
+  const prioritizedIncomplete = (() => {
+    if (!guestPlan?.startTaskId) return incompleteTasks;
+    const start = incompleteTasks.find((t) => t.id === guestPlan.startTaskId);
+    if (!start) return incompleteTasks;
+    return [start, ...incompleteTasks.filter((t) => t.id !== guestPlan.startTaskId)];
+  })();
+
   const focusTask =
-    incompleteTasks.length === 0
+    prioritizedIncomplete.length === 0
       ? null
-      : (guestPlan?.startTaskId &&
-          incompleteTasks.find((t) => t.id === guestPlan.startTaskId) &&
-          blindfoldSkipIndex === 0)
-        ? incompleteTasks.find((t) => t.id === guestPlan.startTaskId)!
-        : incompleteTasks[blindfoldSkipIndex % incompleteTasks.length]!;
+      : prioritizedIncomplete[blindfoldSkipIndex % prioritizedIncomplete.length]!;
   const focusStepNumber = focusTask ? (guestPlan?.tasks.indexOf(focusTask) ?? 0) + 1 : totalTasks;
 
   return (
@@ -997,13 +1025,18 @@ export function GuestWorkspace() {
         open={isOverwhelmModalOpen}
         onClose={() => setIsOverwhelmModalOpen(false)}
         initialHeaviestThought={dump}
+        onTransferToPlan={(text) => {
+          setDump(text);
+          setIsEditingDump(true);
+          setIsOverwhelmModalOpen(false);
+        }}
       />
 
       {activeSprintTask && (
         <MicroSprintTimer
           task={activeSprintTask}
           onCompleteTask={(taskId) => {
-            handleToggleTask(taskId);
+            handleSetTaskDone(taskId);
             setActiveSprintTask(null);
           }}
           onClose={() => setActiveSprintTask(null)}

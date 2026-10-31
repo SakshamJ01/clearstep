@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -308,6 +308,16 @@ function BlindfoldNoteEditor({
   onUpdateNote,
 }: BlindfoldNoteEditorProps) {
   const [noteValue, setNoteValue] = useState(initialNote);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const latestValueRef = useRef(initialNote);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -317,8 +327,24 @@ function BlindfoldNoteEditor({
         placeholder="Quick thoughts, phone numbers, links, or draft messages for this step..."
         value={noteValue}
         onChange={(e) => {
-          setNoteValue(e.target.value);
-          onUpdateNote(taskId, e.target.value);
+          const val = e.target.value;
+          setNoteValue(val);
+          latestValueRef.current = val;
+          if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+          }
+          debounceTimerRef.current = setTimeout(() => {
+            onUpdateNote(taskId, val);
+          }, 400);
+        }}
+        onBlur={() => {
+          if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = null;
+          }
+          if (latestValueRef.current !== initialNote) {
+            onUpdateNote(taskId, latestValueRef.current);
+          }
         }}
         style={{ width: "100%", fontSize: "0.9rem" }}
       />

@@ -133,25 +133,31 @@ export function Composer({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const raw = window.localStorage.getItem(storageKey);
-        if (raw) {
-          const saved = JSON.parse(raw) as Partial<SavedComposer>;
-          if (typeof saved.dump === "string") setDump(saved.dump);
-          if (typeof saved.outcome === "string") setOutcome(saved.outcome);
-          if (typeof saved.horizonDate === "string") {
-            setHorizonDate(saved.horizonDate);
-          }
-          if (typeof saved.availableMinutes === "string") {
-            setAvailableMinutes(saved.availableMinutes);
-          }
-          if (typeof saved.constraints === "string") {
-            setConstraints(saved.constraints);
-          }
-          if (
-            typeof saved.requestId === "string" &&
-            /^[A-Za-z0-9_-]{8,64}$/.test(saved.requestId)
-          ) {
-            setRequestId(saved.requestId);
+        const resetPrefill = window.sessionStorage.getItem("clearstep_reset_prefill");
+        if (resetPrefill) {
+          window.sessionStorage.removeItem("clearstep_reset_prefill");
+          setDump(resetPrefill);
+        } else {
+          const raw = window.localStorage.getItem(storageKey);
+          if (raw) {
+            const saved = JSON.parse(raw) as Partial<SavedComposer>;
+            if (typeof saved.dump === "string") setDump(saved.dump);
+            if (typeof saved.outcome === "string") setOutcome(saved.outcome);
+            if (typeof saved.horizonDate === "string") {
+              setHorizonDate(saved.horizonDate);
+            }
+            if (typeof saved.availableMinutes === "string") {
+              setAvailableMinutes(saved.availableMinutes);
+            }
+            if (typeof saved.constraints === "string") {
+              setConstraints(saved.constraints);
+            }
+            if (
+              typeof saved.requestId === "string" &&
+              /^[A-Za-z0-9_-]{8,64}$/.test(saved.requestId)
+            ) {
+              setRequestId(saved.requestId);
+            }
           }
         }
       } catch {
@@ -812,6 +818,10 @@ export function Composer({
         open={isOverwhelmModalOpen}
         onClose={() => setIsOverwhelmModalOpen(false)}
         initialHeaviestThought={dump}
+        onTransferToPlan={(text) => {
+          setDump(text);
+          setIsOverwhelmModalOpen(false);
+        }}
       />
     </>
   );

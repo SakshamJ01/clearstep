@@ -20,6 +20,13 @@ describe("micro-timer", () => {
     expect(calculateProgressPercent(300, 150)).toBe(50);
     expect(calculateProgressPercent(300, 0)).toBe(100);
     expect(calculateProgressPercent(300, -10)).toBe(100);
+    expect(calculateProgressPercent(0, 0)).toBe(100);
+    expect(calculateProgressPercent(-5, 0)).toBe(100);
+  });
+
+  it("handles non-integer and boundary seconds in formatting", () => {
+    expect(formatTimerSeconds(59.9)).toBe("00:59");
+    expect(formatTimerSeconds(3600)).toBe("60:00");
   });
 
   it("provides valid presets including 5-minute default", () => {

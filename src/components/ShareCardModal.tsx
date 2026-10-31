@@ -107,10 +107,18 @@ export function ShareCardModal({ open, onClose, data }: ShareCardModalProps) {
     }
   }
 
-  function handleCopyText() {
+  async function handleCopyText() {
     const text = buildShareText({ ...data, hideTaskTitles });
-    navigator.clipboard.writeText(text);
-    setCopyFeedback("Text summary copied!");
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        setCopyFeedback("Text summary copied!");
+      } else {
+        throw new Error("Clipboard API unavailable");
+      }
+    } catch {
+      setCopyFeedback("Unable to copy to clipboard.");
+    }
     setTimeout(() => setCopyFeedback(null), 3000);
   }
 

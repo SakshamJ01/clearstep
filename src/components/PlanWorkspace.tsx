@@ -139,14 +139,17 @@ export function PlanWorkspace({
   const blockedCount = openTasks.filter((task) => task.status === "blocked").length;
   const startTask = tasks.find((task) => task.id === startTaskId) ?? null;
 
+  const prioritizedOpenTasks = (() => {
+    if (!startTaskId) return openTasks;
+    const start = openTasks.find((task) => task.id === startTaskId);
+    if (!start) return openTasks;
+    return [start, ...openTasks.filter((task) => task.id !== startTaskId)];
+  })();
+
   const focusTask =
-    openTasks.length === 0
+    prioritizedOpenTasks.length === 0
       ? null
-      : (startTaskId &&
-          openTasks.find((task) => task.id === startTaskId) &&
-          blindfoldSkipIndex === 0)
-        ? openTasks.find((task) => task.id === startTaskId)!
-        : openTasks[blindfoldSkipIndex % openTasks.length]!;
+      : prioritizedOpenTasks[blindfoldSkipIndex % prioritizedOpenTasks.length]!;
   const focusStepNumber = focusTask ? sortedTasks.indexOf(focusTask) + 1 : tasks.length;
 
   function replaceTask(taskId: string, patch: Partial<TaskView>) {

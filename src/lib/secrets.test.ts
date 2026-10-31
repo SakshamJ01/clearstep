@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCipheriv, createHash, randomBytes } from "node:crypto";
-import { decryptText, encryptText } from "@/lib/secrets";
+import { decryptText, encryptText, safeCompare } from "@/lib/secrets";
 
 describe("secrets and key rotation", () => {
   it("encrypts and decrypts text with the active secret", () => {
@@ -54,5 +54,12 @@ describe("secrets and key rotation", () => {
     expect(decryptText("")).toBe("");
     expect(decryptText("invalid.payload")).toBe("");
     expect(decryptText("v2.a.b.c")).toBe("");
+  });
+
+  it("compares strings securely with safeCompare", () => {
+    expect(safeCompare("secret-token-123", "secret-token-123")).toBe(true);
+    expect(safeCompare("secret-token-123", "secret-token-124")).toBe(false);
+    expect(safeCompare("secret-token-123", "short")).toBe(false);
+    expect(safeCompare("", "")).toBe(true);
   });
 });

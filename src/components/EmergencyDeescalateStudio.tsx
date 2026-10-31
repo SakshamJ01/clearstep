@@ -34,6 +34,7 @@ interface EmergencyDeescalateStudioProps {
   onDismiss?: () => void;
   isModal?: boolean;
   initialHeaviestThought?: string;
+  onTransferToPlan?: (text: string) => void;
 }
 
 const INSPIRATION_CHIPS = [
@@ -49,6 +50,7 @@ export function EmergencyDeescalateStudio({
   onDismiss,
   isModal = false,
   initialHeaviestThought = "",
+  onTransferToPlan,
 }: EmergencyDeescalateStudioProps) {
   const router = useRouter();
 
@@ -101,13 +103,7 @@ export function EmergencyDeescalateStudio({
   }, [step, isBreathingRunning, isChimeEnabled]);
 
   function toggleBreathingPause() {
-    if (isBreathingRunning) {
-      accumulatedRef.current += (Date.now() - startTimeRef.current) / 1000;
-      setIsBreathingRunning(false);
-    } else {
-      startTimeRef.current = Date.now();
-      setIsBreathingRunning(true);
-    }
+    setIsBreathingRunning((prev) => !prev);
   }
 
   function handleResetBreathing() {
@@ -131,6 +127,14 @@ export function EmergencyDeescalateStudio({
     ]
       .filter(Boolean)
       .join("\n\n");
+
+    if (onTransferToPlan) {
+      onTransferToPlan(combinedDump);
+      if (onDismiss) {
+        onDismiss();
+      }
+      return;
+    }
 
     try {
       window.sessionStorage.setItem("clearstep_reset_prefill", combinedDump);
@@ -494,14 +498,14 @@ export function EmergencyDeescalateStudio({
       )}
 
       {/* PHASE 3B: EMBEDDED MICRO-SPRINT TIMER */}
-      {step === "sprint" && activeSprintTask && (
+      {step === "sprint" && (
         <section className="emergency-phase-card">
           <div style={{ marginBottom: 16 }}>
             <span className="eyebrow" style={{ color: "var(--accent)" }}>
               Active 5-Minute Sprint
             </span>
             <h2 style={{ fontSize: "1.4rem", fontWeight: 700, margin: "4px 0" }}>
-              {activeSprintTask}
+              {activeSprintTask || "Take 5 quiet minutes to reset"}
             </h2>
             <p style={{ color: "var(--muted)", fontSize: "0.88rem" }}>
               Focus only on this single step. When the chime sounds, you are free to stop or continue.
@@ -509,7 +513,10 @@ export function EmergencyDeescalateStudio({
           </div>
 
           <MicroSprintTimer
-            task={{ id: "emergency-sprint", title: activeSprintTask }}
+            task={{
+              id: "emergency-sprint",
+              title: activeSprintTask || "Take 5 quiet minutes to reset",
+            }}
             onCompleteTask={() => {
               setStep("completed");
             }}

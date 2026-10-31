@@ -83,9 +83,22 @@ export function useVoiceDictation({
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const userStoppedRef = useRef(false);
+  const isListeningRef = useRef(false);
+
+  const onTranscriptChunkRef = useRef(onTranscriptChunk);
+  const onInterimChangeRef = useRef(onInterimChange);
+
+  useEffect(() => {
+    onTranscriptChunkRef.current = onTranscriptChunk;
+  }, [onTranscriptChunk]);
+
+  useEffect(() => {
+    onInterimChangeRef.current = onInterimChange;
+  }, [onInterimChange]);
 
   const stopListening = useCallback(() => {
     userStoppedRef.current = true;
+    isListeningRef.current = false;
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -127,20 +140,31 @@ export function useVoiceDictation({
       recognition.lang = lang;
 
       recognition.onstart = () => {
+        isListeningRef.current = true;
         setIsListening(true);
         setError(null);
       };
 
       recognition.onend = () => {
-        // If browser stopped recognition but user didn't request stop, auto-restart
-        if (!userStoppedRef.current && isListening) {
+        // If browser stopped recognition but user didn't request stop, auto-restart with fresh instance
+        if (!userStoppedRef.current && isListeningRef.current) {
           try {
-            recognition.start();
+            const next = new SpeechRecognition();
+            next.continuous = true;
+            next.interimResults = true;
+            next.lang = lang;
+            next.onstart = recognition.onstart;
+            next.onend = recognition.onend;
+            next.onerror = recognition.onerror;
+            next.onresult = recognition.onresult;
+            recognitionRef.current = next;
+            next.start();
             return;
           } catch {
-            // Ignore restart error
+            // Ignore restart error and fall through
           }
         }
+        isListeningRef.current = false;
         setIsListening(false);
         setInterimText("");
       };
@@ -157,6 +181,7 @@ export function useVoiceDictation({
         } else {
           setError(`Speech recognition notice: ${event.error}`);
         }
+        isListeningRef.current = false;
         setIsListening(false);
         setInterimText("");
       };
@@ -179,21 +204,22 @@ export function useVoiceDictation({
         if (finalChunk) {
           const trimmed = finalChunk.trim();
           if (trimmed) {
-            onTranscriptChunk?.(trimmed);
+            onTranscriptChunkRef.current?.(trimmed);
           }
         }
 
         setInterimText(currentInterim);
-        onInterimChange?.(currentInterim);
+        onInterimChangeRef.current?.(currentInterim);
       };
 
       recognitionRef.current = recognition;
       recognition.start();
-    } catch (err) {
+    } catch {
       setError("Could not start microphone dictation. Please try again.");
+      isListeningRef.current = false;
       setIsListening(false);
     }
-  }, [isListening, lang, onInterimChange, onTranscriptChunk]);
+  }, [lang]);
 
   const toggleListening = useCallback(() => {
     if (isListening) {

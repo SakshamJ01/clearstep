@@ -3,19 +3,35 @@
  * Generates a calm meditation bowl sound with an exponential decay envelope.
  * Completely free ($0.00) with zero external audio assets or network downloads.
  */
-export function playGentleBell(volume = 0.25): boolean {
-  if (typeof window === "undefined") return false;
+let sharedAudioCtx: AudioContext | null = null;
+
+function getSharedAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
 
   try {
     const AudioCtx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return false;
+    if (!AudioCtx) return null;
 
-    const ctx = new AudioCtx();
-    if (ctx.state === "suspended") {
-      ctx.resume();
+    if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+      sharedAudioCtx = new AudioCtx();
     }
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+    return sharedAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+export function playGentleBell(volume = 0.25): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const ctx = getSharedAudioContext();
+    if (!ctx) return false;
 
     const now = ctx.currentTime;
 
@@ -52,10 +68,17 @@ export function playGentleBell(volume = 0.25): boolean {
     fundamental.stop(now + 2.6);
     overtone.stop(now + 2.6);
 
-    // Clean up audio context after playback ends
+    // Disconnect nodes after playback finishes to free audio graph resources
     setTimeout(() => {
-      ctx.close().catch(() => {});
-    }, 3000);
+      try {
+        fundamental.disconnect();
+        overtone.disconnect();
+        gainFund.disconnect();
+        gainOver.disconnect();
+      } catch {
+        // ignore
+      }
+    }, 2800);
 
     return true;
   } catch {

@@ -73,5 +73,11 @@ describe("breathing utility", () => {
     const s33 = calculateBreathState(CYCLE_DURATION * 2 + 1);
     expect(s33.cycleIndex).toBe(3);
     expect(s33.phase).toBe("inhale");
+
+    // Negative elapsed seconds clamped safely to 0
+    const sNeg = calculateBreathState(-10);
+    expect(sNeg.cycleIndex).toBe(1);
+    expect(sNeg.phase).toBe("inhale");
+    expect(sNeg.secondsRemainingInPhase).toBe(4);
   });
 });

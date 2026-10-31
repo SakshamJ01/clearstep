@@ -5,6 +5,7 @@ import {
 } from "@/lib/api";
 import { executeMaintenance } from "@/lib/drafts";
 import { nowIso } from "@/lib/db";
+import { safeCompare } from "@/lib/secrets";
 
 function verifyCronSecret(request: Request): void {
   const configured = process.env.CRON_SECRET?.trim();
@@ -30,7 +31,7 @@ function verifyCronSecret(request: Request): void {
   const querySecret = url.searchParams.get("secret")?.trim();
 
   const provided = bearerToken || customHeader || querySecret;
-  if (provided !== configured) {
+  if (!provided || !safeCompare(provided, configured)) {
     throw new ApiError(401, "UNAUTHORIZED", "Invalid or missing cron secret.");
   }
 }
