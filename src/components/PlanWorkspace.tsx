@@ -31,6 +31,7 @@ import {
 } from "@/components/Icons";
 import { BlindfoldCard } from "@/components/BlindfoldCard";
 import { MicroSprintTimer } from "@/components/MicroSprintTimer";
+import { PlanExportCard } from "./workspace/PlanExportCard";
 import { ShareCardModal } from "@/components/ShareCardModal";
 import {
   formatDeadlineRelative,
@@ -1207,58 +1208,11 @@ export function PlanWorkspace({
             </div>
           ) : null}
 
-          <div className="card plan-side-card">
-            <h3>Keep or leave</h3>
-            <p>
-              Export a readable copy while you still want it. Deletion removes the
-              plan, tasks, notes, and any retained raw dump.
-            </p>
-            <div className="side-actions">
-              <a
-                href={`/api/plans/${plan.id}/export?format=ics`}
-                className="btn btn-outline btn-sm"
-                download
-                id="export-ics-btn"
-                title="Add focus steps directly into Google Calendar, Apple Calendar, or Outlook"
-              >
-                <CalendarIcon />
-                Add to Calendar (.ics)
-              </a>
-              <a
-                href={`/api/plans/${plan.id}/export?format=md`}
-                className="btn btn-outline btn-sm"
-                download
-              >
-                <DownloadIcon />
-                Export Markdown
-              </a>
-              <a
-                href={`/api/plans/${plan.id}/export?format=txt`}
-                className="btn btn-outline btn-sm"
-                download
-              >
-                <DownloadIcon />
-                Export plain text
-              </a>
-              {!archived ? (
-                <Link
-                  href={`/plans/${plan.id}/revise`}
-                  className="btn btn-ghost btn-sm"
-                >
-                  <RotateIcon />
-                  Preview a re-plan
-                </Link>
-              ) : null}
-              <button
-                type="button"
-                className="danger-link"
-                onClick={() => setDeleteOpen(true)}
-                style={{ textAlign: "left", marginTop: 4 }}
-              >
-                Delete this plan
-              </button>
-            </div>
-          </div>
+          <PlanExportCard
+            planId={plan.id}
+            archived={archived}
+            onOpenDelete={() => setDeleteOpen(true)}
+          />
 
           <div className="card plan-side-card">
             <h3>
