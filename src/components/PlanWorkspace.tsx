@@ -1215,6 +1215,16 @@ export function PlanWorkspace({
             </p>
             <div className="side-actions">
               <a
+                href={`/api/plans/${plan.id}/export?format=ics`}
+                className="btn btn-outline btn-sm"
+                download
+                id="export-ics-btn"
+                title="Add focus steps directly into Google Calendar, Apple Calendar, or Outlook"
+              >
+                <CalendarIcon />
+                Add to Calendar (.ics)
+              </a>
+              <a
                 href={`/api/plans/${plan.id}/export?format=md`}
                 className="btn btn-outline btn-sm"
                 download

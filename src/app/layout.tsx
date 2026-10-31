@@ -3,6 +3,7 @@ import "@fontsource-variable/fraunces/wght.css";
 import "@fontsource-variable/fraunces/wght-italic.css";
 import "@fontsource-variable/manrope/wght.css";
 import "./globals.css";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
@@ -51,6 +52,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
+        <OfflineIndicator />
         <ServiceWorkerRegister />
       </body>
     </html>

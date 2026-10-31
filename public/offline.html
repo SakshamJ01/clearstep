@@ -86,10 +86,13 @@
         Reconnect, then return to the app. Nothing is lost from plans you had
         already approved.
       </p>
-      <a href="/compose">Try again</a>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
+        <a href="javascript:window.location.reload()">↻ Try reconnecting</a>
+        <a href="/try" style="background: transparent; color: var(--forest); border: 1px solid var(--forest);">Open Guest Mode</a>
+        <a href="/reset" style="background: transparent; color: var(--forest); border: 1px solid var(--forest);">Emergency Reset Studio</a>
+      </div>
       <div class="note">
-        Brain dumps stay on your device until you reconnect. Clearstep does not
-        send anything while offline.
+        Local tools (5-minute micro timer, focus soundscapes, breathing exercises, and guest drafts) continue to function without any internet connection.
       </div>
     </main>
   </body>

@@ -26,6 +26,12 @@ test("guest visitor creates instant plan, completes a step, and claims it on reg
   await page.locator("#guest-activate-btn").click();
   await expect(page.getByText("Active Plan · Guest Mode")).toBeVisible();
 
+  // Test guest calendar (.ics) download action
+  const guestIcsBtn = page.locator("#guest-export-ics-btn");
+  await expect(guestIcsBtn).toBeVisible();
+  await guestIcsBtn.click();
+  await expect(page.getByText(/Calendar \(\.ics\) downloaded/i)).toBeVisible();
+
   // 6. Complete the first step
   const firstCheckbox = page.locator(".checkbox-btn").first();
   await firstCheckbox.click();

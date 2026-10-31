@@ -6,8 +6,9 @@ import {
   planStatusLabel,
   taskStatusLabel,
 } from "@/lib/format";
+import { generatePlanICalendar } from "@/lib/ical-generator";
 
-export type ExportFormat = "md" | "txt";
+export type ExportFormat = "md" | "txt" | "ics";
 
 function slugify(title: string): string {
   const slug = title
@@ -22,6 +23,15 @@ export function buildPlanExport(
   plan: PlanDetail,
   format: ExportFormat,
 ): { body: string; filename: string; contentType: string } {
+  if (format === "ics") {
+    const icsBody = generatePlanICalendar(plan);
+    return {
+      body: icsBody,
+      filename: `${slugify(plan.title)}-clearstep.ics`,
+      contentType: "text/calendar; charset=utf-8",
+    };
+  }
+
   const openTasks = plan.tasks
     .filter((task) => task.status !== "done")
     .sort((a, b) => a.sortOrder - b.sortOrder);

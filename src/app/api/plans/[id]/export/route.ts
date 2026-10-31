@@ -15,7 +15,8 @@ export async function GET(
       throw new ApiError(404, "NOT_FOUND", "That plan could not be found.");
     }
     const requested = new URL(request.url).searchParams.get("format");
-    const format: ExportFormat = requested === "txt" ? "txt" : "md";
+    const format: ExportFormat =
+      requested === "txt" ? "txt" : requested === "ics" ? "ics" : "md";
     const exported = buildPlanExport(plan, format);
     return new Response(exported.body, {
       headers: {

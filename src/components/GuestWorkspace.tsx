@@ -6,6 +6,7 @@ import {
   ArrowDownIcon,
   ArrowRightIcon,
   ArrowUpIcon,
+  CalendarIcon,
   CheckIcon,
   ClockIcon,
   DownloadIcon,
@@ -38,6 +39,7 @@ import {
   type GuestTask,
 } from "@/lib/guest-storage";
 import { buildManualDraft } from "@/lib/planner/manual";
+import { generatePlanICalendar } from "@/lib/ical-generator";
 
 const PRESETS = [
   {
@@ -364,6 +366,20 @@ export function GuestWorkspace() {
     a.download = `${guestPlan.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-plan.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function handleDownloadICal() {
+    if (!guestPlan) return;
+    const icsContent = generatePlanICalendar(guestPlan);
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${guestPlan.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-clearstep.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setCopyNotice("Calendar (.ics) downloaded! Open it to add steps to your calendar.");
+    setTimeout(() => setCopyNotice(null), 4000);
   }
 
   // Derived progress stats
@@ -696,6 +712,16 @@ export function GuestWorkspace() {
                   title="Copy as Markdown"
                 >
                   📋 Copy Markdown
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={handleDownloadICal}
+                  id="guest-export-ics-btn"
+                  title="Add focus steps to Google Calendar, Apple Calendar, or Outlook"
+                >
+                  <CalendarIcon style={{ width: 14, height: 14 }} />
+                  <span>Calendar (.ics)</span>
                 </button>
                 <button
                   type="button"
