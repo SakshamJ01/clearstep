@@ -40,16 +40,42 @@ test("starts 5-minute micro-action sprint, pauses, switches presets, minimizes, 
   await page.getByRole("button", { name: "5 min", exact: true }).click();
   await expect(display).toHaveText(/04:\d\d|05:00/);
 
-  // 7. Test minimizing to pill
+  // 7. Test Focus Soundscape selection (Brown Noise, Rain, Volume)
+  const soundscapeContainer = page.locator("#micro-soundscapes-container");
+  await expect(soundscapeContainer).toBeVisible();
+
+  const brownBtn = page.locator("#soundscape-btn-brown");
+  await expect(brownBtn).toBeVisible();
+  await brownBtn.click();
+  await expect(brownBtn).toHaveAttribute("aria-pressed", "true");
+  await expect(soundscapeContainer.getByText("Active", { exact: true })).toBeVisible();
+
+  const volumeSlider = page.locator("#soundscape-volume-slider");
+  await expect(volumeSlider).toBeVisible();
+
+  // Switch soundscape to Gentle Rain
+  const rainBtn = page.locator("#soundscape-btn-rain");
+  await rainBtn.click();
+  await expect(rainBtn).toHaveAttribute("aria-pressed", "true");
+  await expect(brownBtn).toHaveAttribute("aria-pressed", "false");
+
+  // 8. Test minimizing to pill with active soundscape badge
   await page.getByRole("button", { name: "Minimize timer" }).click();
   const pill = page.locator(".micro-sprint-pill");
   await expect(pill).toBeVisible();
+  await expect(pill.getByText("Rain")).toBeVisible();
 
-  // 8. Restore from pill
+  // 9. Restore from pill
   await pill.click();
   await expect(timerRegion).toBeVisible();
 
-  // 9. Close timer via Close button
+  // Turn soundscape off
+  const offBtn = page.locator("#soundscape-btn-off");
+  await offBtn.click();
+  await expect(offBtn).toHaveAttribute("aria-pressed", "true");
+  await expect(soundscapeContainer.getByText("Active", { exact: true })).not.toBeVisible();
+
+  // 10. Close timer via Close button
   await page.getByRole("button", { name: "Close timer" }).first().click();
   await expect(timerRegion).not.toBeVisible();
 

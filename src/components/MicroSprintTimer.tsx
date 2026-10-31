@@ -7,11 +7,13 @@ import {
   CheckIcon,
   ClockIcon,
   CloseIcon,
+  HeadphonesIcon,
   PauseIcon,
   PlayIcon,
   PlusIcon,
   RotateIcon,
   SparkIcon,
+  VolumeIcon,
 } from "@/components/Icons";
 import { playGentleBell } from "@/lib/chime";
 import {
@@ -20,6 +22,12 @@ import {
   SPRINT_PRESETS,
   type SprintStatus,
 } from "@/lib/micro-timer";
+import {
+  DEFAULT_SOUNDSCAPE_VOLUME,
+  getSoundscapeEngine,
+  SOUNDSCAPE_OPTIONS,
+  type SoundscapeType,
+} from "@/lib/soundscapes";
 
 export interface SprintTask {
   id: string;
@@ -42,10 +50,67 @@ export function MicroSprintTimer({
   const [status, setStatus] = useState<SprintStatus>("running");
   const [isChimeEnabled, setIsChimeEnabled] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [soundscape, setSoundscape] = useState<SoundscapeType>(() => {
+    if (typeof window === "undefined") return "off";
+    try {
+      const saved = localStorage.getItem("clearstep_soundscape") as SoundscapeType | null;
+      if (saved && SOUNDSCAPE_OPTIONS.some((opt) => opt.id === saved)) {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return "off";
+  });
+
+  const [soundVolume, setSoundVolume] = useState<number>(() => {
+    if (typeof window === "undefined") return DEFAULT_SOUNDSCAPE_VOLUME;
+    try {
+      const savedVol = localStorage.getItem("clearstep_soundscape_volume");
+      if (savedVol) {
+        const parsed = parseFloat(savedVol);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_SOUNDSCAPE_VOLUME;
+  });
 
   // High-precision timing reference to avoid tab-throttling drift
   const targetEndRef = useRef<number>(Date.now() + 5 * 60 * 1000);
   const pausedRemainingRef = useRef<number>(5 * 60);
+  const soundVolumeRef = useRef<number>(soundVolume);
+
+  useEffect(() => {
+    soundVolumeRef.current = soundVolume;
+  }, [soundVolume]);
+
+  // Manage Soundscape audio lifecycle
+  useEffect(() => {
+    const engine = getSoundscapeEngine();
+
+    if (status === "running") {
+      if (soundscape !== "off") {
+        engine.play(soundscape, soundVolumeRef.current);
+      } else {
+        engine.stop();
+      }
+    } else if (status === "paused") {
+      engine.pause();
+    } else if (status === "finished") {
+      engine.stop();
+    }
+  }, [status, soundscape]);
+
+  // Cleanup audio nodes on unmount
+  useEffect(() => {
+    return () => {
+      getSoundscapeEngine().stop();
+    };
+  }, []);
 
   // Sound chime when finished
   useEffect(() => {
@@ -139,8 +204,29 @@ export function MicroSprintTimer({
     setStatus("running");
   }
 
+  function handleSelectSoundscape(type: SoundscapeType) {
+    setSoundscape(type);
+    try {
+      localStorage.setItem("clearstep_soundscape", type);
+    } catch {
+      // ignore
+    }
+  }
+
+  function handleVolumeChange(val: number) {
+    setSoundVolume(val);
+    soundVolumeRef.current = val;
+    getSoundscapeEngine().setVolume(val);
+    try {
+      localStorage.setItem("clearstep_soundscape_volume", val.toString());
+    } catch {
+      // ignore
+    }
+  }
+
   const totalSeconds = durationMinutes * 60;
   const progressPercent = calculateProgressPercent(totalSeconds, remainingSeconds);
+  const activeSoundscapeOption = SOUNDSCAPE_OPTIONS.find((s) => s.id === soundscape);
 
   // Minimized pill state
   if (isMinimized) {
@@ -171,7 +257,24 @@ export function MicroSprintTimer({
         <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "1.05rem" }}>
           {formatTimerSeconds(remainingSeconds)}
         </span>
-        <span style={{ fontSize: "0.85rem", opacity: 0.85, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {soundscape !== "off" && activeSoundscapeOption && (
+          <span
+            style={{
+              fontSize: "0.8rem",
+              background: "rgba(255,255,255,0.18)",
+              padding: "2px 8px",
+              borderRadius: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+            title={`Soundscape: ${activeSoundscapeOption.label}`}
+          >
+            <span>🎧</span>
+            <span>{activeSoundscapeOption.shortLabel}</span>
+          </span>
+        )}
+        <span style={{ fontSize: "0.85rem", opacity: 0.85, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {task.title}
         </span>
         <button
@@ -371,7 +474,7 @@ export function MicroSprintTimer({
               background: "var(--border)",
               borderRadius: 3,
               overflow: "hidden",
-              marginBottom: 16,
+              marginBottom: 14,
             }}
           >
             <div
@@ -382,6 +485,100 @@ export function MicroSprintTimer({
                 transition: "width 0.25s linear",
               }}
             />
+          </div>
+
+          {/* Soundscapes Acoustic Shield Selector */}
+          <div
+            style={{
+              marginBottom: 14,
+              padding: "10px 12px",
+              background: "var(--surface-sunken)",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+            }}
+            id="micro-soundscapes-container"
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.8rem", fontWeight: 700 }}>
+                <HeadphonesIcon style={{ width: 14, height: 14, color: "var(--accent)" }} />
+                <span>Focus Soundscape</span>
+                {soundscape !== "off" && status === "running" && (
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "var(--accent)",
+                      fontWeight: 600,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} />
+                    Active
+                  </span>
+                )}
+              </div>
+
+              {soundscape !== "off" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <VolumeIcon style={{ width: 13, height: 13, color: "var(--muted)" }} />
+                  <input
+                    type="range"
+                    id="soundscape-volume-slider"
+                    min="0.05"
+                    max="0.8"
+                    step="0.05"
+                    value={soundVolume}
+                    onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                    style={{ width: 55, height: 4, cursor: "pointer", accentColor: "var(--accent)" }}
+                    aria-label="Soundscape volume"
+                    title={`Volume: ${Math.round(soundVolume * 100)}%`}
+                  />
+                  <span style={{ fontSize: "0.7rem", color: "var(--muted)", minWidth: 26, textAlign: "right" }}>
+                    {Math.round(soundVolume * 100)}%
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4 }}>
+              {SOUNDSCAPE_OPTIONS.map((opt) => {
+                const isSelected = soundscape === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    id={`soundscape-btn-${opt.id}`}
+                    className={`btn btn-sm ${isSelected ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => handleSelectSoundscape(opt.id)}
+                    style={{
+                      fontSize: "0.7rem",
+                      padding: "4px 2px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 2,
+                      lineHeight: 1.1,
+                      borderWidth: isSelected ? 2 : 1,
+                    }}
+                    title={`${opt.label}: ${opt.description}`}
+                    aria-pressed={isSelected}
+                  >
+                    <span style={{ fontSize: "0.9rem" }}>{opt.emoji}</span>
+                    <span style={{ fontSize: "0.68rem", fontWeight: isSelected ? 700 : 500 }}>
+                      {opt.shortLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Preset Buttons & Controls */}
@@ -430,3 +627,4 @@ export function MicroSprintTimer({
     </aside>
   );
 }
+
