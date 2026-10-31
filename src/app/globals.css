@@ -16,8 +16,21 @@
   --warn-soft: #fbf0ce;
   --warn-line: #e5cf92;
   --warn-ink: #5b4815;
+  --paper-warm: #f6f1e6;
   --line: rgba(28, 42, 34, 0.14);
   --line-strong: rgba(28, 42, 34, 0.26);
+  --border: var(--line);
+  --border-soft: rgba(28, 42, 34, 0.09);
+  --surface: var(--paper-bright);
+  --surface-hover: var(--paper-deep);
+  --surface-muted: rgba(28, 42, 34, 0.04);
+  --surface-sunken: var(--paper-deep);
+  --foreground: var(--ink);
+  --muted: var(--ink-soft);
+  --accent: var(--forest);
+  --danger: var(--coral);
+  --warning: var(--warn-ink);
+  --radius-full: 9999px;
   --radius-xl: 30px;
   --radius-lg: 24px;
   --radius-md: 16px;
@@ -464,6 +477,7 @@ svg {
   height: 13px;
 }
 
+.pill-primary,
 .pill-forest {
   border-color: transparent;
   background: var(--forest);
@@ -488,10 +502,17 @@ svg {
   color: var(--coral-deep);
 }
 
+.pill-success,
 .pill-done {
   border-color: transparent;
   background: var(--forest);
   color: var(--paper-bright);
+}
+
+.pill-neutral {
+  border-color: var(--line);
+  background: rgba(28, 42, 34, 0.05);
+  color: var(--ink-soft);
 }
 
 .status-pill {
@@ -612,6 +633,12 @@ svg {
   background: var(--acid-soft);
   border-color: #d7e2a1;
   color: #2e4b22;
+}
+
+.callout-success {
+  background: var(--acid-soft);
+  border-color: rgba(25, 75, 54, 0.22);
+  color: var(--forest-deep);
 }
 
 .callout-warn {
@@ -4579,6 +4606,47 @@ dialog.dialog::backdrop {
   padding: 14px 18px !important;
   border-radius: var(--radius-md) !important;
   text-align: left;
+}
+
+/* Modal and Overlay primitives */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(16, 51, 38, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  max-width: 680px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 24px;
+  box-shadow: var(--shadow-float);
+}
+
+.breath-orb-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, rgba(217, 236, 125, 0.25), transparent 70%);
+  pointer-events: none;
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .hide-sm {
+    display: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
